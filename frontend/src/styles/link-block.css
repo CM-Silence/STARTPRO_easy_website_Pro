@@ -1,0 +1,125 @@
+.link-block {
+  width: 100%;
+}
+
+.link-block__inner {
+  position: relative;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  border-radius: 1.1rem;
+  background: var(--color-surface, #0f172a);
+  border: 1px solid rgba(var(--color-text-muted-rgb, 156, 163, 175), 0.15);
+  box-shadow: 0 18px 35px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.link-block--transparent .link-block__inner {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.link-block__title {
+  color: var(--color-text-primary, #f8fafc);
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.link-block__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.link-block__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.link-block__list li {
+  list-style: none;
+}
+
+.link-block__list .link-block__button {
+  display: inline-flex;
+}
+
+.link-block__button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem 2rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  color: var(--color-background, #ffffff);
+  background: var(--color-text-primary, #1f2937);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  transition:
+    background 0.3s ease,
+    color 0.3s ease,
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* 对齐 CTA：悬停时背景/文字互换 + 轻微放大 */
+.link-block__button:hover {
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text-primary, #1f2937);
+  transform: scale(1.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.18),
+    0 4px 6px -4px rgba(0, 0, 0, 0.12);
+}
+
+.link-block__button--pill {
+  border-radius: 999px;
+}
+
+.link-block__button--rounded {
+  border-radius: 0.85rem;
+}
+
+.link-block__button--square {
+  border-radius: 0.5rem;
+}
+
+/* 统一对齐 CTA：以下变体不再单独控制颜色/悬停/阴影/动画 */
+.link-block__button--gradient,
+.link-block__button--solid,
+.link-block__button--outline {
+  color: var(--color-background, #ffffff);
+  background: var(--color-text-primary, #1f2937);
+  border-color: transparent;
+}
+
+.link-block__button--glow {
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+.link-block__button--hover-lift:hover,
+.link-block__button--hover-glow:hover,
+.link-block__button--hover-none:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.18),
+    0 4px 6px -4px rgba(0, 0, 0, 0.12);
+}
+
+@media (max-width: 768px) {
+  .link-block__grid {
+    justify-content: flex-start;
+  }
+}

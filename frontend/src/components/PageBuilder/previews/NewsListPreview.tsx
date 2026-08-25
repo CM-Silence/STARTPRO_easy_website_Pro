@@ -1,0 +1,179 @@
+import React, { useEffect, useMemo, useState } from 'react'
+import { Newspaper } from 'lucide-react'
+import { TemplateComponent } from '@/types/templates'
+import { HoverFX } from '@/components/motion'
+import { grabMotionSettings } from '@/styles/motion-presets'
+import { newsApi } from '@/utils/api'
+import type { News } from '@/types'
+
+const NewsMedia: React.FC<{ src?: string | null; icon?: string }> = ({ src, icon }) => {
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [src])
+
+  if (src && !failed) {
+    return (
+      <img src={src} alt="" className="w-full h-full object-cover news-card-image" onError={() => setFailed(true)} />
+    )
+  }
+  return <div className="w-full h-full flex items-center justify-center text-text-tertiary text-4xl">{icon || '📰'}</div>
+}
+
+export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ component }) => {
+  const {
+    title,
+    subtitle,
+    articles = [],
+    widthOption = 'full',
+    backgroundColorOption = 'default',
+    cardsPerRow = 3,
+    viewMode = 'latest',
+    pinFirst = true
+  } = component.props
+
+  const containerClass = widthOption === 'standard' ? 'max-w-screen-2xl mx-auto' : 'w-full'
+  const componentClass =
+    backgroundColorOption === 'transparent'
+      ? 'p-8 rounded-lg shadow-sm news-list-preview'
+      : 'bg-color-surface p-8 rounded-lg shadow-sm news-list-preview'
+  const hover = grabMotionSettings(component.props).hover
+  const hoverDuration = grabMotionSettings(component.props).hoverDuration
+  // 编辑器画布在 /admin 下：未选择的卡片显示占位；公开页则直接隐藏空卡
+  const isEditor = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+
+  // 数据驱动：latest 从新闻中心取 N 条；custom 按所选 newsId 取
+  const [items, setItems] = useState<(News | null)[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      setLoading(true)
+      try {
+        if (viewMode === 'custom') {
+          const ids = (articles || [])
+            .map((a: any) => a?.newsId)
+            .filter((x: any) => x !== '' && x !== null && x !== undefined)
+          if (ids.length === 0) {
+            if (!cancelled) setItems(articles.map(() => null))
+            return
+          }
+          const res = (await newsApi.batch(ids)) as any
+          if (!cancelled && res.success) {
+            const byId = new Map((res.data || []).map((n: any) => [n.id, n]))
+            setItems(
+              (articles || []).map((a: any) => (a?.newsId ? byId.get(Number(a.newsId)) || null : null))
+            )
+          } else if (!cancelled) {
+            setItems(articles.map(() => null))
+          }
+        } else {
+          const count = (articles && articles.length > 0 ? articles.length : 3)
+          const res = (await newsApi.latest({ limit: count, pinFirst: pinFirst !== false })) as any
+          if (!cancelled) setItems((res.success ? res.data : []) || [])
+        }
+      } catch {
+        if (!cancelled) setItems([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [viewMode, pinFirst, articles, newsApi])
+
+  const parsedPerRow = Number.isFinite(Number(cardsPerRow)) ? Math.max(1, Math.min(6, Number(cardsPerRow))) : 3
+  const gridCols =
+    parsedPerRow === 1
+      ? 'grid-cols-1'
+      : parsedPerRow === 2
+        ? 'grid-cols-1 md:grid-cols-2'
+        : parsedPerRow === 3
+          ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+          : parsedPerRow === 4
+            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+            : parsedPerRow === 5
+              ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'
+              : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6'
+
+  const slots = useMemo(() => {
+    if (viewMode === 'custom') return items
+    return loading ? [] : items
+  }, [viewMode, items, loading])
+
+  const hasAny = (slots || []).some((n) => !!n)
+
+  return (
+    <div className={containerClass}>
+      <div className={componentClass}>
+        {title && (
+          <div className="text-center mb-12 news-list-header">
+            <h2 className="text-3xl font-bold mb-4 text-text-primary news-list-title">{title}</h2>
+            {subtitle && <p className="text-lg text-text-secondary w-full news-list-subtitle">{subtitle}</p>}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center text-text-secondary py-12">加载新闻中…</div>
+        ) : viewMode === 'custom' && !hasAny ? (
+          <div className="text-center text-text-secondary py-12">请在编辑器中为新闻卡片选择新闻</div>
+        ) : (
+          <div className={`grid ${gridCols} gap-8 news-list-grid`}>
+            {(slots || []).map((news, index) => {
+              if (!news) {
+                // 公开页：不显示未选择的空卡；编辑器：显示醒目的虚线占位
+                if (!isEditor) return null
+                return (
+                  <div key={index} className="border-2 border-dashed border-gray-300 rounded-lg overflow-hidden news-card flex flex-col items-center justify-center min-h-[220px] text-gray-400 p-4">
+                    <Newspaper className="w-6 h-6 mb-1" />
+                    <span className="mt-1 text-sm">未选择新闻</span>
+                  </div>
+                )
+              }
+              const href = news.link ? String(news.link) : ''
+              const clickable = !!href
+              const cardInner = (
+                <>
+                  <div className="aspect-video bg-color-background overflow-hidden news-card-image-container">
+                    <NewsMedia src={news.image} icon="📰" />
+                  </div>
+
+                  <div className="p-6 news-card-content">
+                    <div className="text-sm text-text-secondary font-medium mb-2 news-card-date">
+                      {news.date ? String(news.date).slice(0, 10) : ''}
+                    </div>
+                    <h3 className="text-lg font-semibold text-text-primary mb-3 line-clamp-2 news-card-title">
+                      {news.title}
+                    </h3>
+                    <p className="text-text-secondary text-sm line-clamp-3 mb-4 news-card-summary">
+                      {news.summary || ''}
+                    </p>
+                    <span className="inline-flex items-center gap-1 font-medium text-sm">
+                      <span className="news-card-readmore-text">阅读更多</span>
+                      <span className="news-card-readmore-arrow">→</span>
+                    </span>
+                  </div>
+                </>
+              )
+              return (
+                <HoverFX
+                  key={index}
+                  hover={hover}
+                  duration={hoverDuration}
+                  className="border border-color-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow news-card"
+                >
+                  {clickable ? (
+                    <a href={href} className="block h-full group cursor-pointer">{cardInner}</a>
+                  ) : (
+                    <div className="block h-full group">{cardInner}</div>
+                  )}
+                </HoverFX>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
