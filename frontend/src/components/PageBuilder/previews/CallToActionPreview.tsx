@@ -1,7 +1,9 @@
 import React from 'react'
 import { TemplateComponent } from '@/types/templates'
+import { useTranslation } from 'react-i18next'
 
 export const CallToActionPreview: React.FC<{ component: TemplateComponent }> = ({ component }) => {
+  const { t } = useTranslation('common')
   const {
     title,
     subtitle,
@@ -47,7 +49,7 @@ export const CallToActionPreview: React.FC<{ component: TemplateComponent }> = (
           className="call-to-action-title text-4xl font-bold mb-6 text-text-primary"
           style={titleStyle}
         >
-          {title || '立即开始行动'}
+          {title || t('cta.defaultTitle')}
         </h2>
         {subtitle && (
           <p

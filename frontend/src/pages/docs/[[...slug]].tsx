@@ -7,6 +7,8 @@ import { marked } from 'marked'
 import { DocsLayout } from '@/components/docs/DocsLayout'
 import { DocsSidebar } from '@/components/docs/DocsSidebar'
 import { DocContent } from '@/components/docs/DocContent'
+import { useTranslation } from 'react-i18next'
+import { useLocale } from '@/i18n/LocaleProvider'
 
 interface DocsPageProps {
   doc: Doc
@@ -53,6 +55,8 @@ const Breadcrumbs = ({ items }: { items: { label: string; href?: string }[] }) =
 )
 
 export default function DocsPage({ doc, tree, slugPath, settings }: DocsPageProps) {
+  const { t } = useTranslation('common')
+  const { localize } = useLocale()
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([])
   const [activeHeadingId, setActiveHeadingId] = useState<string>('')
@@ -65,12 +69,12 @@ export default function DocsPage({ doc, tree, slugPath, settings }: DocsPageProp
   }, [doc.content, doc.content_format])
   const safeHtml = useMemo(() => DOMPurify.sanitize(rawHtml), [rawHtml])
   const siteName = settings.site_name || doc.title
-  const logoName = `${siteName || '文档中心'} | 文档中心`
+  const logoName = `${siteName || t('docs.home')} · ${t('docs.home')}`
 
   // 避免被全局标题覆盖，强制文档页标题
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.title = `文档 - ${doc.title}`
+      document.title = `${t('docs.title')} - ${doc.title}`
     }
   }, [doc.title])
 
@@ -130,14 +134,14 @@ export default function DocsPage({ doc, tree, slugPath, settings }: DocsPageProp
 
   const breadcrumbItems = useMemo(() => {
     const parts = slugPath.split('/').filter(Boolean)
-    const items: { label: string; href?: string }[] = [{ label: '文档中心', href: '/docs' }]
+    const items: { label: string; href?: string }[] = [{ label: t('docs.home'), href: localize('/docs') }]
     let current = ''
     parts.forEach((part, idx) => {
       current = current ? `${current}/${part}` : part
       const node = findNodeBySlug(tree, current)
       const label = node?.title || part
       const isLast = idx === parts.length - 1
-      items.push({ label: isLast ? doc.title : label, href: isLast ? undefined : `/docs/${current}` })
+      items.push({ label: isLast ? doc.title : label, href: isLast ? undefined : localize(`/docs/${current}`) })
     })
     return items
   }, [slugPath, tree, findNodeBySlug, doc.title])
@@ -151,8 +155,8 @@ export default function DocsPage({ doc, tree, slugPath, settings }: DocsPageProp
       }
     }
     return (
-      <nav aria-label="本页目录" className="doc-toc__nav">
-        <div className="doc-toc__title">本页目录</div>
+      <nav aria-label={t('docs.toc')} className="doc-toc__nav">
+        <div className="doc-toc__title">{t('docs.toc')}</div>
         <ul className="doc-toc__list">
           {headings.map((h) => (
             <li key={h.id} className={`doc-toc__item level-${h.level} ${activeHeadingId === h.id ? 'is-active' : ''}`}>
@@ -169,7 +173,7 @@ export default function DocsPage({ doc, tree, slugPath, settings }: DocsPageProp
   return (
     <>
         <Head>
-          <title>文档 - {doc.title}</title>
+          <title>{t('docs.title')} - {doc.title}</title>
           {settings.site_favicon ? (
             <>
               <link id="favicon" rel="icon" href={settings.site_favicon} />
@@ -203,12 +207,13 @@ export default function DocsPage({ doc, tree, slugPath, settings }: DocsPageProp
 export const getServerSideProps: GetServerSideProps<DocsPageProps> = async (context) => {
   const slugParam = context.params?.slug
   const slugPath = Array.isArray(slugParam) ? slugParam.join('/') : ''
+  const locale = ((context.req.headers['x-locale'] as string) || 'zh').toString()
   const baseUrl = process.env.API_BASE_URL || 'http://localhost:3003'
 
   try {
     const [treeRes, settingsRes] = await Promise.all([
-      fetch(`${baseUrl}/api/docs/tree`),
-      fetch(`${baseUrl}/api/settings`).catch(() => null)
+      fetch(`${baseUrl}/api/docs/tree?lang=${locale}`),
+      fetch(`${baseUrl}/api/settings?lang=${locale}`).catch(() => null)
     ])
     if (!treeRes.ok) return { notFound: true }
     const treeData = await treeRes.json()
@@ -217,14 +222,15 @@ export const getServerSideProps: GetServerSideProps<DocsPageProps> = async (cont
     if (!slugPath) {
       const first = findFirstPublishedSlug(tree)
       if (first) {
+        const prefix = locale === 'zh' ? '' : `/${locale}`
         return {
-          redirect: { destination: `/docs/${first}`, permanent: false }
+          redirect: { destination: `${prefix}/docs/${first}`, permanent: false }
         }
       }
       return { notFound: true }
     }
 
-    const docRes = await fetch(`${baseUrl}/api/docs/${slugPath}`)
+    const docRes = await fetch(`${baseUrl}/api/docs/${slugPath}?lang=${locale}`)
     if (docRes.status === 404) return { notFound: true }
     const docData = await docRes.json()
 

@@ -9,6 +9,7 @@ const {
   validateId,
   validateDocSlugPath
 } = require('../middleware/validation')
+const { resolveLang } = require('../utils/resolveLang')
 
 const normalizeSlug = (slug) => {
   if (!slug || typeof slug !== 'string') return ''
@@ -35,10 +36,13 @@ const buildTree = (flatDocs) => {
 // Tree for both admin/public
 router.get('/tree', async (req, res) => {
   try {
+    const lang = resolveLang(req.query.lang)
     const [docs] = await db.execute(
       `SELECT id, title, slug, parent_id, sort_order, status, type
        FROM docs
-       ORDER BY parent_id ASC, sort_order ASC, id ASC`
+       WHERE lang = ?
+       ORDER BY parent_id ASC, sort_order ASC, id ASC`,
+      [lang]
     )
     res.json({ success: true, data: buildTree(docs) })
   } catch (error) {
@@ -54,8 +58,12 @@ router.get('/list', authenticateToken, requireEditor, validateDocListQuery, asyn
     const pageNum = Number(page) || 1
     const limitNum = Math.max(1, Math.min(100, Number(limit) || 10))
     const offset = (pageNum - 1) * limitNum
+    const lang = resolveLang(req.query.lang)
     const filters = []
     const params = []
+
+    filters.push('lang = ?')
+    params.push(lang)
 
     if (search) {
       filters.push('(title LIKE ? OR slug LIKE ?)')
@@ -132,12 +140,13 @@ router.get(
   async (req, res) => {
     try {
       const slugPath = normalizeSlug(req.params.slugPath)
+      const lang = resolveLang(req.query.lang)
       const [docs] = await db.execute(
         `SELECT id, title, slug, parent_id, sort_order, status, type, content_format, content, summary, cover, published_at, created_at, updated_at
          FROM docs
-         WHERE slug = ?
+         WHERE slug = ? AND lang = ?
          LIMIT 1`,
-        [slugPath]
+        [slugPath, lang]
       )
 
       if (!docs.length || docs[0].status !== 'published') {
@@ -184,6 +193,7 @@ router.post(
     try {
       const payload = { ...req.body }
       payload.slug = normalizeSlug(payload.slug)
+      payload.lang = resolveLang(payload.lang)
       payload.parent_id = payload.parent_id ? Number(payload.parent_id) : null
       payload.sort_order = Number.isFinite(Number(payload.sort_order)) ? Number(payload.sort_order) : 0
       payload.status = payload.status || 'draft'
@@ -204,7 +214,7 @@ router.post(
         return res.status(400).json({ success: false, message: '文件夹不允许设置父级' })
       }
 
-      const [exists] = await db.execute('SELECT id FROM docs WHERE slug = ?', [payload.slug])
+      const [exists] = await db.execute('SELECT id FROM docs WHERE slug = ? AND lang = ?', [payload.slug, payload.lang])
       if (exists.length > 0) return res.status(400).json({ success: false, message: 'slug 已存在' })
 
       const publishedAt = payload.status === 'published' ? new Date() : null
@@ -218,12 +228,13 @@ router.post(
 
       const [result] = await db.execute(
         `INSERT INTO docs (
-            title, slug, parent_id, sort_order, status, type, content_format, content, summary, cover,
+            title, slug, lang, parent_id, sort_order, status, type, content_format, content, summary, cover,
             published_at, created_by, updated_by
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           payload.title,
           payload.slug,
+          payload.lang,
           payload.parent_id || null,
           payload.sort_order || 0,
           payload.status,
@@ -272,7 +283,7 @@ router.put(
       if (payload.slug !== undefined) {
         payload.slug = normalizeSlug(payload.slug)
         if (!payload.slug) return res.status(400).json({ success: false, message: 'slug 不能为空' })
-        const [conflicts] = await db.execute('SELECT id FROM docs WHERE slug = ? AND id != ?', [payload.slug, id])
+        const [conflicts] = await db.execute('SELECT id FROM docs WHERE slug = ? AND lang = ? AND id != ?', [payload.slug, existing.lang || 'zh', id])
         if (conflicts.length) return res.status(400).json({ success: false, message: 'slug 已存在' })
       }
 

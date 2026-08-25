@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { DocsThemeToggle } from './DocsThemeToggle'
+import { useTranslation } from 'react-i18next'
 
 interface DocsLayoutProps {
   theme: 'light' | 'dark'
@@ -23,6 +24,7 @@ export const DocsLayout: React.FC<DocsLayoutProps> = ({
   toc,
   children
 }) => {
+  const { t } = useTranslation('common')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   React.useEffect(() => {
@@ -55,7 +57,7 @@ export const DocsLayout: React.FC<DocsLayoutProps> = ({
               <img src={logo.url} alt={logo.name || 'logo'} className="h-8 w-auto object-contain" />
             ) : null}
             <Link href="/" className="text-lg font-semibold text-[var(--color-text-primary)]">
-              {logo?.name || '文档中心'}
+              {logo?.name || t('docs.home')}
             </Link>
           </div>
           <div className="doc-topbar__right flex items-center gap-3">

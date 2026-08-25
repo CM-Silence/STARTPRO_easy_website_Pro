@@ -25,6 +25,9 @@ import FontSelector from '@/components/admin/settings/FontSelector'
 import ThemeColorField from '@/components/admin/settings/ThemeColorField'
 import toast from 'react-hot-toast'
 import { settingsApi } from '@/utils/api'
+import LanguageSelect from '@/components/admin/LanguageSelect'
+import AiSyncModal from '@/components/admin/AiSyncModal'
+import { Sparkles } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import type { Settings, FooterSection, FooterLayout, FooterSocialLink, PageTransitionChoice } from '@/types'
 import { getThemeById, resolveBackgroundEffect, type ThemeBackgroundChoice } from '@/styles/themes'
@@ -145,6 +148,8 @@ export default function AdminSettingsPage() {
   const [isAssetPickerOpen, setIsAssetPickerOpen] = useState(false)
   const [assetPickerTarget, setAssetPickerTarget] = useState<AssetPickerTarget | null>(null)
   const [assetPickerSource, setAssetPickerSource] = useState<'user' | 'system'>('user')
+  const [lang, setLang] = useState('zh')
+  const [syncOpen, setSyncOpen] = useState(false)
   const { refreshSettings } = useSettings()
 
   const {
@@ -232,12 +237,12 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     fetchSettings()
-  }, [])
+  }, [lang])
 
   const fetchSettings = async () => {
     try {
       setIsLoading(true)
-      const response = await settingsApi.get()
+      const response = await settingsApi.get(lang)
       if (response.success) {
         const { wechat_qrcode: _ignore, ...raw } = response.data || {}
         const { site_record: _r1, nav_layout_style: _r2, theme_overrides: _r3, ...serverSettings } =
@@ -402,7 +407,7 @@ export default function AdminSettingsPage() {
       if (payload.verification_tags && Object.keys(payload.verification_tags as any).length === 0) {
         delete (payload as any).verification_tags
       }
-      const response = await settingsApi.update(payload)
+      const response = await settingsApi.update({ ...payload, lang })
       if (response.success) {
         toast.success('设置保存成功')
         setSettings(payload)
@@ -431,6 +436,26 @@ export default function AdminSettingsPage() {
 
   return (
     <AdminLayout title="系统设置" description="管理站点主题、品牌、页脚与社交信息">
+      <div className="mb-4 flex items-center gap-2">
+        <span className="text-sm text-theme-textSecondary">编辑语言</span>
+        <LanguageSelect value={lang} includeDisabled onChange={(code) => setLang(code)} className="theme-input text-sm rounded-lg h-10 px-3" />
+        {lang === 'zh' && (
+          <button
+            type="button"
+            onClick={() => setSyncOpen(true)}
+            className="inline-flex items-center px-4 h-10 rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 text-sm transition-colors"
+          >
+            <Sparkles className="w-4 h-4 mr-1" />AI 一键转换到其他语言
+          </button>
+        )}
+        <AiSyncModal
+          open={syncOpen}
+          onClose={() => setSyncOpen(false)}
+          type="settings"
+          settingsMode
+          onDone={() => { setSyncOpen(false); fetchSettings() }}
+        />
+      </div>
       <div className="space-y-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           {/* 站点信息与全局 SEO */}
@@ -824,6 +849,8 @@ export default function AdminSettingsPage() {
 
             {/* 社交媒体链接 */}
             <div className="pt-4 border-t border-semantic-dividerStrong">
+              <label className="block text-sm font-medium text-theme-text mb-1">“关注我们” 标题</label>
+              <ThemeAwareInput type="text" {...register('footer_social_title' as const)} className="px-3 max-w-md mb-3" placeholder="关注我们 / Follow Us" />
               <h3 className="text-sm font-semibold text-theme-text mb-3">社交媒体链接</h3>
               <div className="space-y-4">
                 {footerSocialFields.map((field, index) => {

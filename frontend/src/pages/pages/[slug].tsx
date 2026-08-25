@@ -5,7 +5,10 @@ import Head from 'next/head'
 import Layout from '@/components/Layout'
 import { motion, MotionConfig, useReducedMotion } from 'framer-motion'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useLocale } from '@/i18n/LocaleProvider'
+import { applyLinkPrefix, localeToSuffix } from '@/i18n/localizeContent'
 import { Share2, Eye } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { pagesApi } from '@/utils/api'
 import { formatDateTime } from '@/utils'
 import toast from 'react-hot-toast'
@@ -24,10 +27,12 @@ interface DynamicPageProps {
 
 export default function DynamicPage({ initialPage, initialError, initialSettings }: DynamicPageProps) {
   const { settings } = useSettings() || {}
+  const { t } = useTranslation('common')
   const reduceMotion = useReducedMotion()
   const parallaxEnabled = !reduceMotion
   const router = useRouter()
   const { slug } = router.query
+  const { locale, suffix } = useLocale()
   const [page, setPage] = useState<PageContent | null>(initialPage)
   const [isLoading, setIsLoading] = useState(!initialPage && !initialError)
   const [error, setError] = useState<string | null>(initialError)
@@ -49,7 +54,7 @@ export default function DynamicPage({ initialPage, initialError, initialSettings
       setIsLoading(true)
       setError(null)
 
-      const response = await pagesApi.getBySlug(pageSlug)
+      const response = await pagesApi.getBySlug(pageSlug, locale)
 
       if (response.success) {
         if (response.data.published) {
@@ -62,16 +67,20 @@ export default function DynamicPage({ initialPage, initialError, initialSettings
               pageData.template_data = null
             }
           }
+          pageData.template_data = {
+            ...(pageData.template_data || {}),
+            components: applyLinkPrefix((pageData.template_data as any)?.components, suffix)
+          }
           setPage(pageData)
         } else {
-          setError('页面未发布或不存在')
+          setError(t('page.notPublished'))
         }
       } else {
-        setError('页面不存在')
+        setError(t('page.notFound'))
       }
     } catch (err) {
       console.error('获取页面失败:', err)
-      setError('加载页面时出现错误')
+      setError(t('page.error'))
     } finally {
       setIsLoading(false)
     }
@@ -88,19 +97,19 @@ export default function DynamicPage({ initialPage, initialError, initialSettings
 
       if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
         await navigator.share(shareData)
-        toast.success('分享成功')
+        toast.success(t('page.shareSuccess'))
       } else {
         await navigator.clipboard.writeText(url)
-        toast.success('链接已复制到剪贴板')
+        toast.success(t('page.linkCopied'))
       }
     } catch (shareError) {
       console.log('分享错误:', shareError)
       try {
         await navigator.clipboard.writeText(window.location.href)
-        toast.success('链接已复制到剪贴板')
+        toast.success(t('page.linkCopied'))
       } catch (clipboardError) {
         console.error('复制失败:', clipboardError)
-        toast.error('分享失败，请手动复制链接')
+        toast.error(t('page.shareFail'))
       }
     }
   }
@@ -112,7 +121,7 @@ export default function DynamicPage({ initialPage, initialError, initialSettings
       if (!PreviewComponent) {
         return (
           <div key={component.id || index} className="p-4 border border-red-300 rounded-lg bg-red-50 dark:bg-red-900 dark:bg-opacity-20">
-            <p className="text-red-600 dark:text-red-400">未知组件类型: {component.type}</p>
+            <p className="text-red-600 dark:text-red-400">{t('page.unknownComponent')}: {component.type}</p>
           </div>
         )
       }
@@ -160,7 +169,7 @@ export default function DynamicPage({ initialPage, initialError, initialSettings
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-tech-accent mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">页面加载中...</p>
+            <p className="text-gray-600 dark:text-gray-400">{t('page.loading')}</p>
           </div>
         </div>
       </Layout>
@@ -171,22 +180,22 @@ export default function DynamicPage({ initialPage, initialError, initialSettings
     return (
       <Layout>
         <Head>
-          <title>页面不存在</title>
+          <title>{t('page.notFound')}</title>
         </Head>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🔍</div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              页面不存在
+              {t('page.notFound')}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              {error || '抱歉，您访问的页面不存在或已被删除。'}
+              {error || t('page.notFoundDesc')}
             </p>
             <button
               onClick={() => router.push('/')}
               className="inline-flex items-center px-6 py-3 bg-tech-accent text-white rounded-lg hover:bg-tech-secondary transition-colors"
             >
-              返回首页
+              {t('page.backHome')}
             </button>
           </div>
         </div>
@@ -255,7 +264,7 @@ export default function DynamicPage({ initialPage, initialError, initialSettings
                   <div
                     className="prose prose-lg dark:prose-invert max-w-none"
                     dangerouslySetInnerHTML={{
-                      __html: page.content?.replace(/\n/g, '<br>') || '暂无内容'
+                      __html: page.content?.replace(/\n/g, '<br>') || t('page.empty')
                     }}
                   />
                 )}
@@ -270,7 +279,7 @@ export default function DynamicPage({ initialPage, initialError, initialSettings
               >
                 <Eye className="w-4 h-4 mr-2" />
                 <span className="text-sm">
-                  最后更新 {formatDateTime(page.updated_at)}
+                  {t('page.updatedAt')} {formatDateTime(page.updated_at)}
                 </span>
               </motion.div>
             )}
@@ -287,9 +296,10 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     return { notFound: true }
   }
 
+  const locale = ((context.req.headers['x-locale'] as string) || 'zh').toString()
   const apiBase = process.env.API_BASE_URL || 'http://localhost:3003'
-  const url = `${apiBase}/api/pages/slug/${encodeURIComponent(slug)}`
-  const settingsUrl = `${apiBase}/api/settings`
+  const url = `${apiBase}/api/pages/slug/${encodeURIComponent(slug)}?lang=${locale}`
+  const settingsUrl = `${apiBase}/api/settings?lang=${locale}`
 
   try {
     const response = await fetch(url, {
@@ -330,6 +340,13 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         pageData.template_data = JSON.parse(pageData.template_data)
       } catch {
         pageData.template_data = null
+      }
+    }
+    const suffixSsr = localeToSuffix(locale)
+    if (pageData.template_data) {
+      pageData.template_data = {
+        ...pageData.template_data,
+        components: applyLinkPrefix((pageData.template_data as any)?.components, suffixSsr)
       }
     }
 

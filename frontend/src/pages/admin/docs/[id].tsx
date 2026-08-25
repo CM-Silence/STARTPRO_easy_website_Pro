@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import AdminLayout from '@/components/AdminLayout'
 import DocForm from '@/components/docs/DocForm'
+import LanguageSelect from '@/components/admin/LanguageSelect'
 import { docsApi } from '@/utils/api'
 import type { Doc, DocNode } from '@/types'
 import toast from 'react-hot-toast'
@@ -18,13 +19,11 @@ export default function EditDocPage() {
     if (!id) return
     try {
       setLoading(true)
-      const [docRes, treeRes] = await Promise.all([
-        docsApi.getById(id as string),
-        docsApi.getTree()
-      ])
+      const docRes = await docsApi.getById(id as string)
       if (docRes.success) {
         setDoc(docRes.data)
       }
+      const treeRes = await docsApi.getTree((docRes.data as any)?.lang || 'zh')
       if (treeRes.success) {
         setTree(treeRes.data || [])
       }
@@ -84,6 +83,10 @@ export default function EditDocPage() {
         <div>
           <h1 className="text-2xl font-semibold text-theme-text">编辑文档</h1>
           <p className="text-theme-textSecondary">ID：{doc.id}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-theme-textSecondary">语言（不可改）</span>
+          <LanguageSelect value={(doc as any).lang || 'zh'} onChange={() => {}} disabled className="theme-input text-sm rounded-lg h-10 px-3 bg-theme-surfaceAlt" />
         </div>
       </div>
 

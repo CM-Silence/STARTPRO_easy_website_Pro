@@ -1,9 +1,11 @@
 ﻿import React, { ReactNode, useMemo } from 'react'
 import Head from 'next/head'
+import { useTranslation } from 'react-i18next'
 import ThemeAwareHeader from './ThemeAwareHeader'
 import ThemeAwareFooter from './ThemeAwareFooter'
 import { motion } from 'framer-motion'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useLocale } from '@/i18n/LocaleProvider'
 
 import BackgroundRenderer from '@/components/theme-backgrounds/BackgroundRenderer'
 import { defaultTheme, getThemeById, resolveBackgroundEffect, type ThemeBackgroundChoice } from '@/styles/themes'
@@ -44,6 +46,8 @@ export default function Layout({
 }: LayoutProps) {
   const { settings: contextSettings } = useSettings()
   const settings = settingsProp || contextSettings
+  const { t } = useTranslation('common')
+  const { locale } = useLocale()
   const [navigationItems, setNavigationItems] = React.useState<NavItem[]>([])
   const providedNavigation = (headerProps as any)?.navigation
 
@@ -53,7 +57,7 @@ export default function Layout({
     let mounted = true
     const fetchNavigation = async () => {
       try {
-        const navResponse = await navigationApi.getAll()
+        const navResponse = await navigationApi.getAll(locale)
         if (!mounted) return
 
         if (navResponse.success && Array.isArray(navResponse.data) && navResponse.data.length) {
@@ -81,7 +85,7 @@ export default function Layout({
     return () => {
       mounted = false
     }
-  }, [providedNavigation])
+  }, [providedNavigation, locale])
 
   const themeId = settings?.site_theme || defaultTheme.id
   const activeTheme = useMemo(() => getThemeById(themeId), [themeId])
@@ -100,7 +104,7 @@ export default function Layout({
     keywords ??
     (settings?.site_keywords ??
       settings?.site_description ??
-      '信息技术服务,官网,公司')
+      t('meta.defaultKeywords'))
   const companyName = settings?.company_name || ''
   const favicon = settings?.site_favicon || ''
   const logo = settings?.site_logo || ''
@@ -225,6 +229,7 @@ export default function Layout({
 
 function BackToTop() {
   const [isVisible, setIsVisible] = React.useState(false)
+  const { t } = useTranslation('common')
 
   React.useEffect(() => {
     const toggleVisibility = () => {
@@ -256,7 +261,7 @@ function BackToTop() {
       className="back-to-top-button"
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
-      title="返回顶部"
+      title={t('ui.backToTop')}
     >
       <svg
         className="w-5 h-5 transition-transform duration-300 hover:-translate-y-1"

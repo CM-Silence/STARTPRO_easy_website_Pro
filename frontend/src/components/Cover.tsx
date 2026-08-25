@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { useReducedMotion } from 'framer-motion'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useTranslation } from 'react-i18next'
+import { registerTransitionNavigator } from '@/lib/transitionNavigation'
 
 const CURTAIN_EASE = 'cubic-bezier(0.76, 0, 0.24, 1)'
 const SLIDE = 560
@@ -21,6 +23,7 @@ const TEXT_DELAY = 330
 export function Cover({ enabled }: { enabled: boolean }) {
   const router = useRouter()
   const reduceMotion = useReducedMotion()
+  const { t } = useTranslation('common')
   const { settings } = useSettings()
   const curtainRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -145,6 +148,14 @@ export function Cover({ enabled }: { enabled: boolean }) {
       }, SLIDE + 40)
     }
 
+    // 供程序化导航（如语言切换器）复用同一套「先盖幕布→再导航」：就绪则接管并返回 true，否则返回 false 由调用方直接跳转
+    const unregisterNav = registerTransitionNavigator((href: string): boolean => {
+      if (!armed.current || active.current) return false
+      if (samePath(href)) return true
+      fireNav(href)
+      return true
+    })
+
     const onDocClick = (e: MouseEvent) => {
       if (!armed.current || active.current) return // 首屏期间或已有切换进行中，走默认行为
       const el = (e.target as HTMLElement)?.closest?.('a[href]')
@@ -186,6 +197,7 @@ export function Cover({ enabled }: { enabled: boolean }) {
       router.events.off('routeChangeComplete', onDone)
       router.events.off('routeChangeError', onDone)
       if (pushTimer.current) window.clearTimeout(pushTimer.current)
+      unregisterNav()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, router, reduceMotion])
@@ -194,11 +206,10 @@ export function Cover({ enabled }: { enabled: boolean }) {
     () =>
       (((settings as any)?.transition_main_title as string) ||
         (settings?.site_name as string) ||
-        '湃联智能').replace(/™$/, '') + '™',
-    [settings?.site_name, (settings as any)?.transition_main_title]
+        t('transition.brand')).replace(/™$/, '') + '™',
+    [settings?.site_name, (settings as any)?.transition_main_title, t]
   )
-  const tagline =
-    (settings as any)?.transition_subtitle || '让智能算法安全驱动能源世界'
+  const tagline = (settings as any)?.transition_subtitle || t('transition.tagline')
   const accent = 'rgba(var(--color-accent-rgb, 0, 212, 255), 1)'
   const primary = 'rgba(var(--color-primary-rgb, 59, 130, 246), 1)'
 

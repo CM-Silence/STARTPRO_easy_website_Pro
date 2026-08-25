@@ -20,7 +20,8 @@ import {
   Bell,
   Inbox,
   Key,
-  Newspaper
+  Newspaper,
+  Languages
 } from 'lucide-react'
 import { authApi, clearAccessToken, getAccessToken, setAccessToken } from '@/utils/api'
 import { getThemeById, defaultTheme, resolveBackgroundEffect, type ThemeBackgroundChoice } from '@/styles/themes'
@@ -93,6 +94,11 @@ const menuItems: MenuItem[] = [
     label: 'AI 接入',
     href: '/admin/ai-settings',
     icon: <Sparkles className="w-5 h-5" />
+  },
+  {
+    label: '语言管理',
+    href: '/admin/languages',
+    icon: <Languages className="w-5 h-5" />
   },
   {
     label: '系统设置',
@@ -284,7 +290,7 @@ export default function AdminLayout({
           {/* 底部用户信息 */}
           <div className="p-4">
             <div className="flex items-center space-x-3 text-sm text-theme-textSecondary">
-              <div className="w-8 h-8 bg-semantic-hero-accent rounded-full flex items-center justify-center text-white">
+              <div className="w-8 h-8 bg-theme-surfaceAlt rounded-full flex items-center justify-center text-theme-text">
                 <User className="w-4 h-4" />
               </div>
               <div>

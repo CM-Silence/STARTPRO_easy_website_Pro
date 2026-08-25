@@ -8,6 +8,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import VisualPageEditor from '@/components/PageBuilder/VisualPageEditor'
+import LanguageSelect from '@/components/admin/LanguageSelect'
 import { pagesApi } from '@/utils/api'
 import toast from 'react-hot-toast'
 import type { PageContent } from '@/types'
@@ -131,11 +132,17 @@ export default function EditPublishedVisualPage() {
   };
 
   return (
-    <VisualPageEditor
-      initialData={editorInitialData}
-      editMode="edit" // 设置为编辑模式
-      onSave={handleSaveVisual}
-      onCancel={handleCancel}
-    />
+    <div className="relative">
+      <div className="absolute top-2 right-2 z-[60] w-44">
+        <div className="mb-1 text-xs font-medium text-gray-600">页面语言（不可改）</div>
+        <LanguageSelect value={(pageData as any).lang || 'zh'} onChange={() => {}} disabled />
+      </div>
+      <VisualPageEditor
+        initialData={editorInitialData}
+        editMode="edit" // 设置为编辑模式
+        onSave={handleSaveVisual}
+        onCancel={handleCancel}
+      />
+    </div>
   )
 }

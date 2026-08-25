@@ -1,12 +1,21 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { pagesApi } from '@/utils/api'
+import LanguageSelect from '@/components/admin/LanguageSelect'
 import toast from 'react-hot-toast'
 import VisualPageEditor from '@/components/PageBuilder/VisualPageEditor'
 
 export default function EditVisualPage() {
   const router = useRouter()
   const { id } = router.query
+  const [lang, setLang] = useState('zh')
+
+  useEffect(() => {
+    if (!id || typeof id !== 'string') return
+    pagesApi.getById(id).then((res) => {
+      if (res.success && (res as any).data?.lang) setLang((res as any).data.lang)
+    }).catch(() => {})
+  }, [id])
 
   const handleSaveVisual = async (pageData: any) => {
     if (!id || typeof id !== 'string') return
@@ -56,11 +65,17 @@ export default function EditVisualPage() {
   };
 
   return (
-    <VisualPageEditor
-      initialData={editorInitialData}
-      editMode="edit" // 设置为编辑模式
-      onSave={handleSaveVisual}
-      onCancel={handleCancel}
-    />
+    <div className="relative">
+      <div className="absolute top-2 right-2 z-[60] w-44">
+        <div className="mb-1 text-xs font-medium text-gray-500">页面语言（不可改）</div>
+        <LanguageSelect value={lang} onChange={() => {}} disabled />
+      </div>
+      <VisualPageEditor
+        initialData={editorInitialData}
+        editMode="edit" // 设置为编辑模式
+        onSave={handleSaveVisual}
+        onCancel={handleCancel}
+      />
+    </div>
   )
 }

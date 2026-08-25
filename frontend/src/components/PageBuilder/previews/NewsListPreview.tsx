@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/router'
 import { Newspaper } from 'lucide-react'
 import { TemplateComponent } from '@/types/templates'
 import { HoverFX } from '@/components/motion'
 import { grabMotionSettings } from '@/styles/motion-presets'
 import { newsApi } from '@/utils/api'
+import { useLocale } from '@/i18n/LocaleProvider'
+import { useTranslation } from 'react-i18next'
 import type { News } from '@/types'
 
 const NewsMedia: React.FC<{ src?: string | null; icon?: string }> = ({ src, icon }) => {
@@ -19,6 +22,8 @@ const NewsMedia: React.FC<{ src?: string | null; icon?: string }> = ({ src, icon
 }
 
 export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ component }) => {
+  const { t } = useTranslation('common')
+  const { locale, localize } = useLocale()
   const {
     title,
     subtitle,
@@ -38,7 +43,9 @@ export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ co
   const hover = grabMotionSettings(component.props).hover
   const hoverDuration = grabMotionSettings(component.props).hoverDuration
   // 编辑器画布在 /admin 下：未选择的卡片显示占位；公开页则直接隐藏空卡
-  const isEditor = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+  // 用 router.pathname（SSR/客户端一致）判定，避免 window 造成的 hydration 不一致
+  const router = useRouter()
+  const isEditor = router.pathname.startsWith('/admin')
 
   // 数据驱动：latest 从新闻中心取 N 条；custom 按所选 newsId 取
   const [items, setItems] = useState<(News | null)[]>([])
@@ -57,7 +64,7 @@ export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ co
             if (!cancelled) setItems(articles.map(() => null))
             return
           }
-          const res = (await newsApi.batch(ids)) as any
+          const res = (await newsApi.batch(ids, locale)) as any
           if (!cancelled && res.success) {
             const byId = new Map((res.data || []).map((n: any) => [n.id, n]))
             setItems(
@@ -68,7 +75,7 @@ export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ co
           }
         } else {
           const count = (articles && articles.length > 0 ? articles.length : 3)
-          const res = (await newsApi.latest({ limit: count, pinFirst: pinFirst !== false })) as any
+          const res = (await newsApi.latest({ limit: count, pinFirst: pinFirst !== false, lang: locale })) as any
           if (!cancelled) setItems((res.success ? res.data : []) || [])
         }
       } catch {
@@ -81,7 +88,7 @@ export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ co
     return () => {
       cancelled = true
     }
-  }, [viewMode, pinFirst, articles, newsApi])
+  }, [viewMode, pinFirst, articles, locale])
 
   const parsedPerRow = Number.isFinite(Number(cardsPerRow)) ? Math.max(1, Math.min(6, Number(cardsPerRow))) : 3
   const gridCols =
@@ -115,9 +122,9 @@ export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ co
         )}
 
         {loading ? (
-          <div className="text-center text-text-secondary py-12">加载新闻中…</div>
+          <div className="text-center text-text-secondary py-12">{t('news.loading')}</div>
         ) : viewMode === 'custom' && !hasAny ? (
-          <div className="text-center text-text-secondary py-12">请在编辑器中为新闻卡片选择新闻</div>
+          <div className="text-center text-text-secondary py-12">{t('news.noSelection')}</div>
         ) : (
           <div className={`grid ${gridCols} gap-8 news-list-grid`}>
             {(slots || []).map((news, index) => {
@@ -131,7 +138,8 @@ export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ co
                   </div>
                 )
               }
-              const href = news.link ? String(news.link) : ''
+              const rawLink = news.link ? String(news.link) : ''
+              const href = rawLink && rawLink.startsWith('/') ? localize(rawLink) : rawLink
               const clickable = !!href
               const cardInner = (
                 <>
@@ -150,9 +158,9 @@ export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ co
                       {news.summary || ''}
                     </p>
                     <span className="inline-flex items-center gap-1 font-medium text-sm">
-                      <span className="news-card-readmore-text">阅读更多</span>
-                      <span className="news-card-readmore-arrow">→</span>
-                    </span>
+                        <span className="news-card-readmore-text">{t('news.readMore')}</span>
+                        <span className="news-card-readmore-arrow">→</span>
+                      </span>
                   </div>
                 </>
               )

@@ -141,8 +141,10 @@ CREATE TABLE IF NOT EXISTS `navigation` (
   `is_active` tinyint(1) DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `lang` varchar(10) NOT NULL DEFAULT 'zh' COMMENT '语言',
   PRIMARY KEY (`id`),
   KEY `parent_id` (`parent_id`),
+  KEY `idx_nav_lang_active` (`lang`, `is_active`),
   CONSTRAINT `navigation_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `navigation` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -228,20 +230,6 @@ LOCK TABLES `page_components` WRITE;
 UNLOCK TABLES;
 
 --
--- Temporary view structure for view `page_stats`
---
-
--- DROP TABLE IF EXISTS `page_stats`;
-/*!50001 DROP VIEW IF EXISTS `page_stats`*/;
-SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `page_stats` AS SELECT 
- 1 AS `total_pages`,
- 1 AS `published_pages`,
- 1 AS `draft_pages`*/;
-SET character_set_client = @saved_cs_client;
-
---
 -- Table structure for table `page_tags`
 --
 
@@ -289,11 +277,12 @@ CREATE TABLE IF NOT EXISTS `pages` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `template_data` json DEFAULT NULL COMMENT '模板数据',
+  `lang` varchar(10) NOT NULL DEFAULT 'zh' COMMENT '语言',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `slug` (`slug`),
+  UNIQUE KEY `uq_pages_lang_slug` (`lang`, `slug`),
   KEY `created_by` (`created_by`),
-  KEY `idx_slug` (`slug`),
-  KEY `idx_published` (`published`),
+  KEY `idx_pages_lang` (`lang`),
+  KEY `idx_pages_lang_published` (`lang`, `published`),
   KEY `idx_created_at` (`created_at`),
   CONSTRAINT `pages_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='页面表';
@@ -325,9 +314,10 @@ CREATE TABLE IF NOT EXISTS `settings` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `site_theme` varchar(50) DEFAULT 'default',
+  `lang` varchar(10) NOT NULL DEFAULT 'zh' COMMENT '语言',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `setting_key` (`setting_key`),
-  KEY `idx_key` (`setting_key`)
+  UNIQUE KEY `uq_settings_lang_key` (`lang`, `setting_key`),
+  KEY `idx_settings_lang` (`lang`)
 ) ENGINE=InnoDB AUTO_INCREMENT=15242 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='设置表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -400,21 +390,6 @@ LOCK TABLES `user_sessions` WRITE;
 /*!40000 ALTER TABLE `user_sessions` DISABLE KEYS */;
 /*!40000 ALTER TABLE `user_sessions` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Temporary view structure for view `user_stats`
---
-
--- DROP TABLE IF EXISTS `user_stats`;
-/*!50001 DROP VIEW IF EXISTS `user_stats`*/;
-SET @saved_cs_client     = @@character_set_client;
-/*!50503 SET character_set_client = utf8mb4 */;
-/*!50001 CREATE VIEW `user_stats` AS SELECT 
- 1 AS `total_users`,
- 1 AS `admin_users`,
- 1 AS `editor_users`,
- 1 AS `viewer_users`*/;
-SET character_set_client = @saved_cs_client;
 
 --
 -- Table structure for table `users`
@@ -503,41 +478,6 @@ LOCK TABLES `visit_stats` WRITE;
 /*!40000 ALTER TABLE `visit_stats` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
--- Final view structure for view `page_stats`
---
-
-/*!50001 DROP VIEW IF EXISTS `page_stats`*/;
-/*!50001 SET @saved_cs_client          = @@character_set_client */;
-/*!50001 SET @saved_cs_results         = @@character_set_results */;
-/*!50001 SET @saved_col_connection     = @@collation_connection */;
-/*!50001 SET character_set_client      = utf8mb4 */;
-/*!50001 SET character_set_results     = utf8mb4 */;
-/*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
-/*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `page_stats` AS select count(0) AS `total_pages`,sum((case when (`pages`.`published` = true) then 1 else 0 end)) AS `published_pages`,sum((case when (`pages`.`published` = false) then 1 else 0 end)) AS `draft_pages` from `pages` */;
-/*!50001 SET character_set_client      = @saved_cs_client */;
-/*!50001 SET character_set_results     = @saved_cs_results */;
-/*!50001 SET collation_connection      = @saved_col_connection */;
-
---
--- Final view structure for view `user_stats`
---
-
-/*!50001 DROP VIEW IF EXISTS `user_stats`*/;
-/*!50001 SET @saved_cs_client          = @@character_set_client */;
-/*!50001 SET @saved_cs_results         = @@character_set_results */;
-/*!50001 SET @saved_col_connection     = @@collation_connection */;
-/*!50001 SET character_set_client      = utf8mb4 */;
-/*!50001 SET character_set_results     = utf8mb4 */;
-/*!50001 SET collation_connection      = utf8mb4_0900_ai_ci */;
-/*!50001 CREATE ALGORITHM=UNDEFINED */
-/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `user_stats` AS select count(0) AS `total_users`,sum((case when (`users`.`role` = 'admin') then 1 else 0 end)) AS `admin_users`,sum((case when (`users`.`role` = 'editor') then 1 else 0 end)) AS `editor_users`,sum((case when (`users`.`role` = 'viewer') then 1 else 0 end)) AS `viewer_users` from `users` */;
-/*!50001 SET character_set_client      = @saved_cs_client */;
-/*!50001 SET character_set_results     = @saved_cs_results */;
-/*!50001 SET collation_connection      = @saved_col_connection */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -567,9 +507,11 @@ CREATE TABLE IF NOT EXISTS `docs` (
   `updated_by` bigint unsigned DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `lang` varchar(10) NOT NULL DEFAULT 'zh' COMMENT '语言',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `slug` (`slug`),
+  UNIQUE KEY `uq_docs_lang_slug` (`lang`, `slug`),
   KEY `idx_docs_parent` (`parent_id`),
+  KEY `idx_docs_lang` (`lang`),
   KEY `idx_docs_status` (`status`),
   KEY `idx_docs_sort` (`parent_id`,`sort_order`),
   CONSTRAINT `fk_docs_parent` FOREIGN KEY (`parent_id`) REFERENCES `docs`(`id`) ON DELETE SET NULL
@@ -636,6 +578,115 @@ CREATE TABLE IF NOT EXISTS `news` (
   `published` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `lang` varchar(10) NOT NULL DEFAULT 'zh' COMMENT '语言',
   PRIMARY KEY (`id`),
-  KEY `idx_news_pin_date` (`pinned`, `date`, `id`)
+  KEY `idx_news_pin_date` (`pinned`, `date`, `id`),
+  KEY `idx_news_lang` (`lang`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ==========================================================================
+-- 多语言增量迁移：让使用旧配置（无 lang 列）的服务器「运行一次即可对齐到新配置」。
+-- 规约：只允许【新增】旧配置没有的列/索引/约束；绝不覆盖、删除既有业务数据。
+-- 幂等：重复运行安全；全新部署（上文已建含 lang 的完整表结构）执行到此亦为 no-op。
+-- 说明：若某旧表存在重复 setting_key（历史垃圾行），为保证不删除数据，
+--       会跳过该表的联合唯一约束（仅补列/索引），避免 ALTER 失败。
+-- ==========================================================================
+
+-- ---------- 语言表（全新新增的表，旧库亦需创建；仅新增，不触碰既有数据） ----------
+CREATE TABLE IF NOT EXISTS `languages` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `display_name` varchar(100) NOT NULL COMMENT '显示名（如 中文 / English）',
+  `suffix` varchar(50) NOT NULL DEFAULT '' COMMENT 'URL 后缀（中文为空；其余需唯一、可写入 URL）',
+  `is_enabled` tinyint(1) NOT NULL DEFAULT '1' COMMENT '启用',
+  `is_system` tinyint(1) NOT NULL DEFAULT '0' COMMENT '系统内置（不可编辑/删除）',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_languages_suffix` (`suffix`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='语言表';
+
+-- 默认「中文」行（系统内置，仅当不存在系统行时插入，幂等）
+INSERT INTO `languages` (`display_name`, `suffix`, `is_enabled`, `is_system`)
+SELECT '中文', '', 1, 1
+WHERE NOT EXISTS (SELECT 1 FROM `languages` WHERE `is_system` = 1);
+
+-- 判定某表某列是否已存在
+SET @_lang_pages = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pages' AND COLUMN_NAME='lang');
+SET @_s = IF(@_lang_pages=0, 'ALTER TABLE pages ADD COLUMN `lang` varchar(10) NOT NULL DEFAULT ''zh'' COMMENT ''语言'' AFTER `template_data`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+SET @_lang_settings = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='settings' AND COLUMN_NAME='lang');
+SET @_s = IF(@_lang_settings=0, 'ALTER TABLE settings ADD COLUMN `lang` varchar(10) NOT NULL DEFAULT ''zh'' COMMENT ''语言'' AFTER `site_theme`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+SET @_lang_docs = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='docs' AND COLUMN_NAME='lang');
+SET @_s = IF(@_lang_docs=0, 'ALTER TABLE docs ADD COLUMN `lang` varchar(10) NOT NULL DEFAULT ''zh'' COMMENT ''语言'' AFTER `updated_at`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+SET @_lang_news = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='news' AND COLUMN_NAME='lang');
+SET @_s = IF(@_lang_news=0, 'ALTER TABLE news ADD COLUMN `lang` varchar(10) NOT NULL DEFAULT ''zh'' COMMENT ''语言'' AFTER `updated_at`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+SET @_lang_nav = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='navigation' AND COLUMN_NAME='lang');
+SET @_s = IF(@_lang_nav=0, 'ALTER TABLE navigation ADD COLUMN `lang` varchar(10) NOT NULL DEFAULT ''zh'' COMMENT ''语言'' AFTER `updated_at`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------- 校验既有行的 lang 兜底为 zh（新增列默认已 'zh'，副本保险） ----------
+UPDATE pages SET lang='zh' WHERE lang IS NULL OR lang='';
+UPDATE settings SET lang='zh' WHERE lang IS NULL OR lang='';
+UPDATE docs SET lang='zh' WHERE lang IS NULL OR lang='';
+UPDATE news SET lang='zh' WHERE lang IS NULL OR lang='';
+UPDATE navigation SET lang='zh' WHERE lang IS NULL OR lang='';
+
+-- ---------- pages：唯一 slug → 联合唯一 (lang, slug)；补索引 ----------
+SET @_old = (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pages' AND INDEX_NAME='slug');
+SET @_new = (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pages' AND INDEX_NAME='uq_pages_lang_slug');
+SET @_s = IF(@_old=1 AND @_new=0, 'ALTER TABLE pages DROP INDEX `slug`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF(@_new=0, 'ALTER TABLE pages ADD UNIQUE KEY `uq_pages_lang_slug` (`lang`, `slug`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pages' AND INDEX_NAME='idx_pages_lang')=0, 'ALTER TABLE pages ADD KEY `idx_pages_lang` (`lang`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pages' AND INDEX_NAME='idx_pages_lang_published')=0, 'ALTER TABLE pages ADD KEY `idx_pages_lang_published` (`lang`, `published`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------- docs：唯一 slug → 联合唯一 (lang, slug)；补索引 ----------
+SET @_old = (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='docs' AND INDEX_NAME='slug');
+SET @_new = (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='docs' AND INDEX_NAME='uq_docs_lang_slug');
+SET @_s = IF(@_old=1 AND @_new=0, 'ALTER TABLE docs DROP INDEX `slug`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF(@_new=0, 'ALTER TABLE docs ADD UNIQUE KEY `uq_docs_lang_slug` (`lang`, `slug`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='docs' AND INDEX_NAME='idx_docs_lang')=0, 'ALTER TABLE docs ADD KEY `idx_docs_lang` (`lang`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------- settings：唯一 setting_key → 联合唯一 (lang, setting_key)；补索引 ----------
+-- 若有重复 setting_key（历史垃圾行）则不建联合唯一，仅补列/索引，绝不删数据
+SET @_new = (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='settings' AND INDEX_NAME='uq_settings_lang_key');
+SET @_dup = (SELECT COUNT(*) FROM (SELECT setting_key FROM settings GROUP BY setting_key HAVING COUNT(*)>1) t);
+SET @_s = IF(@_new=0 AND @_dup=0, 'ALTER TABLE settings DROP INDEX `setting_key`, ADD UNIQUE KEY `uq_settings_lang_key` (`lang`, `setting_key`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='settings' AND INDEX_NAME='idx_settings_lang')=0, 'ALTER TABLE settings ADD KEY `idx_settings_lang` (`lang`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------- news：补索引（无唯一约束） ----------
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='news' AND INDEX_NAME='idx_news_lang')=0, 'ALTER TABLE news ADD KEY `idx_news_lang` (`lang`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------- navigation：补索引（无唯一约束） ----------
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='navigation' AND INDEX_NAME='idx_nav_lang_active')=0, 'ALTER TABLE navigation ADD KEY `idx_nav_lang_active` (`lang`, `is_active`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------- news：跨语言 source_id 关联（供 AI 同步定位目标记录；新增列，幂等） ----------
+SET @_has_news_src = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='news' AND COLUMN_NAME='source_id');
+SET @_s = IF(@_has_news_src=0, 'ALTER TABLE news ADD COLUMN `source_id` int DEFAULT NULL COMMENT ''跨语言源记录ID'' AFTER `lang`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='news' AND INDEX_NAME='idx_news_source')=0, 'ALTER TABLE news ADD KEY `idx_news_source` (`lang`, `source_id`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------- navigation：跨语言 source_id 关联（供 AI 同步定位目标记录） ----------
+SET @_has_nav_src = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='navigation' AND COLUMN_NAME='source_id');
+SET @_s = IF(@_has_nav_src=0, 'ALTER TABLE navigation ADD COLUMN `source_id` int DEFAULT NULL COMMENT ''跨语言源记录ID'' AFTER `lang`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='navigation' AND INDEX_NAME='idx_nav_source')=0, 'ALTER TABLE navigation ADD KEY `idx_nav_source` (`lang`, `source_id`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;

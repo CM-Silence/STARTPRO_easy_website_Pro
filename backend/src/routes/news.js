@@ -7,6 +7,7 @@ const {
   validateUpdateNews,
   validateId
 } = require('../middleware/validation')
+const { resolveLang } = require('../utils/resolveLang')
 
 // 归一化：date 空置 null，pinned 布尔 → 0/1
 // 归一化：date 空置 null，pinned 布尔 → 0/1；date 只接受 YYYY-MM-DD(字符串或 Date 均转成该格式)，否则置 null
@@ -26,7 +27,8 @@ const normalize = (body = {}) => ({
   link: body.link ? String(body.link) : '',
   image: body.image ? String(body.image) : '',
   pinned: body.pinned ? 1 : 0,
-  published: body.published === false || body.published === 0 ? 0 : 1
+  published: body.published === false || body.published === 0 ? 0 : 1,
+  lang: resolveLang(body.lang)
 })
 
 // 管理端分页列表 + 搜索（editor）
@@ -36,16 +38,17 @@ router.get('/', authenticateToken, requireEditor, async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 100)
     const offset = (page - 1) * limit
     const search = (req.query.search || '').trim()
+    const lang = resolveLang(req.query.lang)
 
-    let where = ''
-    let params = []
+    let where = 'WHERE lang = ?'
+    let params = [lang]
     if (search) {
-      where = 'WHERE title LIKE ? OR summary LIKE ?'
-      params = [`%${search}%`, `%${search}%`]
+      where += ' AND (title LIKE ? OR summary LIKE ?)'
+      params.push(`%${search}%`, `%${search}%`)
     }
     const onlyPublished = req.query.published === 'true' || req.query.published === '1' || req.query.published === true
     if (onlyPublished) {
-      where = where ? `${where} AND published = 1` : 'WHERE published = 1'
+      where += ' AND published = 1'
     }
     // 排序：默认创建时间倒序；可选日期正序 / 倒序
     const sort = String(req.query.sort || 'created')
@@ -84,9 +87,11 @@ router.get('/latest', async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 100)
     const pinFirst = String(req.query.pinFirst) === 'true' || req.query.pinFirst === '1'
     const order = pinFirst ? 'pinned DESC, date DESC, id DESC' : 'date DESC, id DESC'
+    const lang = resolveLang(req.query.lang)
     const [rows] = await db.execute(
       `SELECT id, title, DATE_FORMAT(date, "%Y-%m-%d") AS date, summary, link, image, pinned, published, created_at, updated_at
-       FROM news WHERE published = 1 ORDER BY ${order} LIMIT ${limit}`
+       FROM news WHERE published = 1 AND lang = ? ORDER BY ${order} LIMIT ${limit}`,
+      [lang]
     )
     res.json({ success: true, data: rows })
   } catch (error) {
@@ -106,10 +111,11 @@ router.get('/batch', async (req, res) => {
       return res.json({ success: true, data: [] })
     }
     const placeholders = ids.map(() => '?').join(',')
+    const lang = resolveLang(req.query.lang)
     const [rows] = await db.execute(
       `SELECT id, title, DATE_FORMAT(date, "%Y-%m-%d") AS date, summary, link, image, pinned, published, created_at, updated_at
-       FROM news WHERE published = 1 AND id IN (${placeholders})`,
-      ids
+       FROM news WHERE published = 1 AND lang = ? AND id IN (${placeholders})`,
+      [lang, ...ids]
     )
     res.json({ success: true, data: rows })
   } catch (error) {
@@ -140,8 +146,8 @@ router.post('/', authenticateToken, requireEditor, validateCreateNews, logActivi
   try {
     const n = normalize(req.body)
     const [result] = await db.execute(
-      `INSERT INTO news (title, date, summary, link, image, pinned, published) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [n.title, n.date, n.summary, n.link, n.image, n.pinned, n.published]
+      `INSERT INTO news (title, date, summary, link, image, pinned, published, lang) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [n.title, n.date, n.summary, n.link, n.image, n.pinned, n.published, n.lang]
     )
     const [[row]] = await db.execute(
       'SELECT id, title, DATE_FORMAT(date, "%Y-%m-%d") AS date, summary, link, image, pinned, published, created_at, updated_at FROM news WHERE id = ?',

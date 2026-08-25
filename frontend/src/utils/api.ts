@@ -41,7 +41,7 @@ class ApiClient {
         : process.env.NODE_ENV === 'production' 
           ? 'https://your-domain.com/api' 
           : 'http://localhost:3001/api', // 服务器端直接访问后端
-      timeout: 10000,
+      timeout: 60000,
       withCredentials: true, // 允许携带凭证
     })
 
@@ -175,43 +175,51 @@ export const authApi = {
 }
 
 export const pagesApi = {
-  getAll: (params?: { page?: number; limit?: number; search?: string; category?: string }): Promise<PaginatedResponse<PageContent>> =>
+  getAll: (params?: { page?: number; limit?: number; search?: string; category?: string; lang?: string; tagIds?: any }): Promise<PaginatedResponse<PageContent>> =>
     api.get('/pages', { params }) as Promise<PaginatedResponse<PageContent>>,
-  
+
   getById: (id: string) => api.get(`/pages/${id}`),
-  
+
   getComponents: (id: string) => api.get(`/pages/${id}/components`),
-  
-  getBySlug: (slug: string) => api.get(`/pages/slug/${slug}`),
-  
+
+  getBySlug: (slug: string, lang?: string) => api.get(`/pages/slug/${slug}`, { params: { lang } }),
+
   create: (data: any) => api.post('/pages', data),
-  
+
   update: (id: string, data: any) => api.put(`/pages/${id}`, data),
-  
+
   delete: (id: string) => api.delete(`/pages/${id}`),
 }
 
 export const navigationApi = {
-  getAll: () => api.get('/navigation'),
-  
-  getAdmin: () => api.get('/navigation/admin'),
-  
+  getAll: (lang?: string) => api.get('/navigation', { params: { lang } }),
+
+  getAdmin: (lang?: string) => api.get('/navigation/admin', { params: { lang } }),
+
   getById: (id: string) => api.get(`/navigation/${id}`),
-  
+
   create: (data: any) => api.post('/navigation', data),
-  
+
   update: (id: string, data: any) => api.put(`/navigation/${id}`, data),
-  
+
   delete: (id: string) => api.delete(`/navigation/${id}`),
-  
-  updateSort: (items: { id: string; sort_order: number }[]) => 
+
+  updateSort: (items: { id: string; sort_order: number }[]) =>
     api.put('/navigation/batch/sort', { items }),
 }
 
 export const settingsApi = {
-  get: () => api.get('/settings'),
-  
+  get: (lang?: string) => api.get('/settings', { params: { lang } }),
+
   update: (data: any) => api.put('/settings', data),
+}
+
+export const languagesApi = {
+  getAll: () => api.get('/languages'),
+  getEnabled: () => api.get('/languages/enabled'),
+  create: (data: any) => api.post('/languages', data),
+  update: (id: string | number, data: any) => api.put(`/languages/${id}`, data),
+  delete: (id: string | number) => api.delete(`/languages/${id}`),
 }
 
 export const statsApi = {
@@ -334,14 +342,16 @@ export const aiApi = {
   updateTemplate: (id: number | string, data: any) => api.put(`/ai/templates/${id}`, data),
   deleteTemplate: (id: number | string) => api.delete(`/ai/templates/${id}`),
 
-  generate: (data: any) => api.post('/ai/generate', data)
+  generate: (data: any) => api.post('/ai/generate', data),
+  sync: (data: { type: string; ids: (string | number)[]; targetLangs: string[] }) => api.post('/ai/sync', data, { timeout: 600000 }),
+  syncSettings: (data: { targetLangs: string[] }) => api.post('/ai/sync-settings', data, { timeout: 600000 }),
 }
 
 export const docsApi = {
-  getTree: () => api.get('/docs/tree'),
-  list: (params?: { page?: number; limit?: number; search?: string; status?: 'draft' | 'published'; parent_id?: number | null }) =>
+  getTree: (lang?: string) => api.get('/docs/tree', { params: { lang } }),
+  list: (params?: { page?: number; limit?: number; search?: string; status?: 'draft' | 'published'; parent_id?: number | null; lang?: string }) =>
     api.get('/docs/list', { params }) as Promise<PaginatedResponse<Doc>>,
-  getBySlug: (slugPath: string) => api.get(`/docs/${slugPath}`),
+  getBySlug: (slugPath: string, lang?: string) => api.get(`/docs/${slugPath}`, { params: { lang } }),
   getById: (id: string | number) => api.get(`/docs/id/${id}`),
   create: (data: any) => api.post('/docs', data),
   update: (id: string | number, data: any) => api.put(`/docs/${id}`, data),
@@ -349,13 +359,13 @@ export const docsApi = {
 }
 
 export const newsApi = {
-  list: (params?: { page?: number; limit?: number; search?: string; published?: boolean; sort?: 'created' | 'date_asc' | 'date_desc' }) =>
+  list: (params?: { page?: number; limit?: number; search?: string; published?: boolean; sort?: 'created' | 'date_asc' | 'date_desc'; lang?: string }) =>
     api.get('/news', { params }) as Promise<PaginatedResponse<News>>,
-  latest: (params?: { limit?: number; pinFirst?: boolean }) =>
+  latest: (params?: { limit?: number; pinFirst?: boolean; lang?: string }) =>
     api.get('/news/latest', { params }),
-  batch: (ids: (string | number)[]) => api.get('/news/batch', { params: { ids: ids.join(',') } }),
+  batch: (ids: (string | number)[], lang?: string) => api.get('/news/batch', { params: { ids: ids.join(','), lang } }),
   getById: (id: string | number) => api.get(`/news/id/${id}`),
-  getFeatured: () => api.get('/news/latest', { params: { limit: 3, pinFirst: true } }),
+  getFeatured: (lang?: string) => api.get('/news/latest', { params: { limit: 3, pinFirst: true, lang } }),
   create: (data: NewsFormData) => api.post('/news', data),
   update: (id: string | number, data: NewsFormData) => api.put(`/news/${id}`, data),
   delete: (id: string | number) => api.delete(`/news/${id}`)

@@ -3,6 +3,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import AdminLayout from '@/components/AdminLayout'
 import { docsApi } from '@/utils/api'
+import LanguageSelect from '@/components/admin/LanguageSelect'
+import AiSyncModal from '@/components/admin/AiSyncModal'
+import { Sparkles } from 'lucide-react'
 import type { Doc, DocNode } from '@/types'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
@@ -22,11 +25,14 @@ export default function DocsListPage() {
   const [currentParent, setCurrentParent] = useState<number | null>(null)
   const [search, setSearch] = useState('')
   const [searchResult, setSearchResult] = useState<Doc | null>(null)
+  const [lang, setLang] = useState('zh')
+  const [syncOpen, setSyncOpen] = useState(false)
+  const [syncIds, setSyncIds] = useState<string[]>([])
 
   const fetchTree = async () => {
     try {
       setTreeLoading(true)
-      const res = await docsApi.getTree()
+      const res = await docsApi.getTree(lang)
       if (res.success) {
         setTree(res.data || [])
       }
@@ -75,7 +81,10 @@ export default function DocsListPage() {
 
   useEffect(() => {
     fetchTree()
-  }, [])
+    setSelectedDoc(null)
+    setSelectedFolder(null)
+    setCurrentParent(null)
+  }, [lang])
 
   useEffect(() => {
     const selectId = router.query.select ? Number(router.query.select) : null
@@ -112,7 +121,7 @@ export default function DocsListPage() {
     }
     try {
       // 简单按 slug 精确匹配或标题包含
-      const res = await docsApi.list({ page: 1, limit: 1, search: search.trim() })
+      const res = await docsApi.list({ page: 1, limit: 1, search: search.trim(), lang })
       if (res.success && res.data?.length) {
         const doc = res.data[0]
         setSearchResult(doc as Doc)
@@ -146,6 +155,27 @@ export default function DocsListPage() {
           <p className="text-theme-textSecondary">管理文档目录、状态与内容</p>
         </div>
         <div className="flex items-center gap-3">
+          <LanguageSelect
+            value={lang}
+            includeDisabled
+            onChange={(code) => setLang(code)}
+            className="theme-input text-sm rounded-lg h-10 px-3"
+          />
+          {lang === 'zh' && (
+            <button
+              onClick={() => {
+                const id = selectedDoc?.id ?? selectedFolder?.id
+                if (!id) return toast.error('请先选择要同步的文档或文件夹')
+                setSyncIds([String(id)])
+                setSyncOpen(true)
+              }}
+              disabled={!selectedDoc && !selectedFolder}
+              className="inline-flex items-center px-3 py-2 rounded-md bg-violet-100 text-violet-700 hover:bg-violet-200 text-sm disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4 mr-1" />AI 同步
+            </button>
+          )}
+          <AiSyncModal open={syncOpen} onClose={() => setSyncOpen(false)} type="doc" ids={syncIds} onDone={fetchTree} />
           <Link
             href={`/admin/docs/create${currentParent ? `?parent_id=${currentParent}` : ''}`}
             className="px-3 py-2 rounded-md bg-[var(--semantic-cta-primary-bg)] text-[color:var(--semantic-cta-primary-contrast)] shadow hover:opacity-90 transition text-sm"

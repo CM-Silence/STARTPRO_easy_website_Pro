@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminLayout from '@/components/AdminLayout'
-import { Plus, Pencil, Trash2, X, RefreshCw, Save, Image as ImageIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, RefreshCw, Save, Image as ImageIcon, Sparkles } from 'lucide-react'
 import { newsApi } from '@/utils/api'
 import AssetPickerModal from '@/components/AssetPickerModal'
+import LanguageSelect from '@/components/admin/LanguageSelect'
+import AiSyncModal from '@/components/admin/AiSyncModal'
 import type { News } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -26,9 +28,10 @@ interface NewsForm {
   image: string
   pinned: boolean
   published: boolean
+  lang: string
 }
 
-const emptyForm = (): NewsForm => ({ title: '', date: '', summary: '', link: '', image: '', pinned: false, published: true })
+const emptyForm = (): NewsForm => ({ title: '', date: '', summary: '', link: '', image: '', pinned: false, published: true, lang: 'zh' })
 
 const inputCls =
   'w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-tech-accent'
@@ -40,12 +43,35 @@ export default function AdminNewsPage() {
   const [total, setTotal] = useState(0)
   const [keyword, setKeyword] = useState('')
   const [sort, setSort] = useState<'created' | 'date_asc' | 'date_desc'>('created')
+  const [lang, setLang] = useState('zh')
   const [isLoading, setIsLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [assetOpen, setAssetOpen] = useState(false)
   const [form, setForm] = useState<NewsForm>(emptyForm())
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [syncOpen, setSyncOpen] = useState(false)
+  const [syncIds, setSyncIds] = useState<string[]>([])
+
+  const toggleSelect = (id: string | number) =>
+    setSelectedIds((prev) => {
+      const s = String(id)
+      return prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+    })
+  const toggleSelectAll = () =>
+    setSelectedIds((prev) => (prev.length === list.length ? [] : list.map((n) => String(n.id))))
+  const clearSelection = () => setSelectedIds([])
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!window.confirm(`确定删除选中的 ${selectedIds.length} 条新闻？此操作无法撤销。`)) return
+    for (const id of selectedIds) {
+      try { await newsApi.delete(Number(id)) } catch { /* 逐条容错 */ }
+    }
+    clearSelection()
+    fetchList({ page: 1 })
+  }
 
   const totalPages = useMemo(() => Math.ceil(total / LIMIT) || 1, [total])
 
@@ -58,6 +84,7 @@ export default function AdminNewsPage() {
           page: p,
           limit: LIMIT,
           sort,
+          lang,
           search: opts?.search !== undefined ? opts.search : (opts?.page !== undefined ? keyword : undefined)
         })
         if (response.success) {
@@ -73,7 +100,7 @@ export default function AdminNewsPage() {
         setIsLoading(false)
       }
     },
-    [page, keyword, sort]
+    [page, keyword, sort, lang]
   )
 
   useEffect(() => {
@@ -95,7 +122,8 @@ export default function AdminNewsPage() {
       link: n.link || '',
       image: n.image || '',
       pinned: !!n.pinned,
-      published: n.published !== false && n.published !== 0
+      published: n.published !== false && n.published !== 0,
+      lang: (n as any).lang || 'zh'
     })
     setModalOpen(true)
   }
@@ -130,7 +158,8 @@ export default function AdminNewsPage() {
         link: form.link,
         image: form.image,
         pinned: form.pinned,
-        published: form.published
+        published: form.published,
+        lang: form.lang
       }
       const response = editingId
         ? await newsApi.update(editingId, payload)
@@ -162,6 +191,12 @@ export default function AdminNewsPage() {
               className="w-full pl-3 pr-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 text-sm focus:ring-2 focus:ring-tech-accent focus:border-transparent"
             />
           </div>
+          <LanguageSelect
+            value={lang}
+            includeDisabled
+            onChange={(code) => { setLang(code); setPage(1) }}
+            className="border border-gray-300 rounded-lg bg-white text-gray-900 text-sm px-3 py-2 min-w-[120px]"
+          />
           <select
             value={sort}
             onChange={(e) => { setSort(e.target.value as 'created' | 'date_asc' | 'date_desc'); setPage(1) }}
@@ -188,11 +223,32 @@ export default function AdminNewsPage() {
         </div>
       </div>
 
+      {selectedIds.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-violet-200 bg-violet-50 dark:bg-violet-900/20 px-4 py-2">
+          <span className="text-sm text-gray-700 dark:text-gray-300">已选 {selectedIds.length} 项</span>
+          {lang === 'zh' && (
+            <button
+              onClick={() => { setSyncIds(selectedIds); setSyncOpen(true); }}
+              className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
+            >
+              <Sparkles className="w-4 h-4 mr-1" />批量 AI 同步
+            </button>
+          )}
+          <button onClick={handleBatchDelete} className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">
+            <Trash2 className="w-4 h-4 mr-1" />批量删除
+          </button>
+          <button onClick={clearSelection} className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700">取消选择</button>
+        </div>
+      )}
+      <AiSyncModal open={syncOpen} onClose={() => setSyncOpen(false)} type="news" ids={syncIds} onDone={() => { clearSelection(); fetchList({ page: 1 }); }} />
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
+                <th className="px-4 py-3 font-medium">
+                  <input type="checkbox" checked={list.length > 0 && selectedIds.length === list.length} onChange={toggleSelectAll} className="rounded border-gray-300" />
+                </th>
                 <th className="px-4 py-3 font-medium">ID</th>
                 <th className="px-4 py-3 font-medium">标题</th>
                 <th className="px-4 py-3 font-medium">日期</th>
@@ -205,12 +261,15 @@ export default function AdminNewsPage() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">加载中…</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">加载中…</td></tr>
               ) : list.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">暂无新闻</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">暂无新闻</td></tr>
               ) : (
                 list.map((n) => (
                   <tr key={n.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <input type="checkbox" checked={selectedIds.includes(String(n.id))} onChange={() => toggleSelect(String(n.id))} className="rounded border-gray-300" />
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{n.id}</td>
                     <td className="px-4 py-3 text-gray-900 max-w-[260px] truncate">{n.title}</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{toYMD(n.date) || '—'}</td>
@@ -224,6 +283,11 @@ export default function AdminNewsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        {lang === 'zh' && (
+                          <button onClick={() => { setSyncIds([String(n.id)]); setSyncOpen(true); }} className="p-1.5 rounded hover:bg-gray-100 text-violet-600" title="AI 同步">
+                            <Sparkles className="w-4 h-4" />
+                          </button>
+                        )}
                         <button onClick={() => openEdit(n)} className="p-1.5 rounded hover:bg-gray-100 text-gray-600 hover:text-tech-accent" title="编辑">
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -273,6 +337,16 @@ export default function AdminNewsPage() {
               <div>
                 <label className={labelCls}>标题 *</label>
                 <input className={inputCls} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="新闻标题" />
+              </div>
+              <div>
+                <label className={labelCls}>语言</label>
+                <LanguageSelect
+                  value={form.lang}
+                  disabled={!!editingId}
+                  onChange={(code) => setForm({ ...form, lang: code })}
+                  className={inputCls}
+                />
+                {editingId && <p className="text-xs text-gray-400 mt-1">已有内容的语言不可修改</p>}
               </div>
               <div>
                 <label className={labelCls}>日期</label>

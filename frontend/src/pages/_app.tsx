@@ -10,6 +10,7 @@ import type { AppProps } from 'next/app'
 import { Toaster } from 'react-hot-toast'
 import { useReducedMotion } from 'framer-motion'
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext'
+import { LocaleProvider } from '@/i18n/LocaleProvider'
 import { useMetaInfo } from '@/hooks/useMetaInfo'
 import { useEffect } from 'react'
 import { applyTheme, getThemeById, setCustomThemePalette } from '@/styles/themes'
@@ -75,8 +76,10 @@ function AppContent({ Component, pageProps }: AppProps) {
 
 export default function App(props: AppProps) {
   return (
-    <SettingsProvider>
-      <AppContent {...props} />
-    </SettingsProvider>
+    <LocaleProvider>
+      <SettingsProvider>
+        <AppContent {...props} />
+      </SettingsProvider>
+    </LocaleProvider>
   )
 }

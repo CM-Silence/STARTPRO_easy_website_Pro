@@ -1,6 +1,7 @@
 const express = require('express')
 const db = require('../config/database')
 const { authenticateToken, requireAdmin, requireEditor, logActivity } = require('../middleware/auth')
+const { translateItem } = require('../utils/aiTranslate')
 
 const router = express.Router()
 
@@ -528,6 +529,195 @@ router.post('/generate', authenticateToken, requireEditor, logActivity('generate
   } catch (error) {
     console.error('Failed to generate AI content:', error)
     res.status(500).json({ success: false, message: error.message || 'Failed to generate AI content' })
+  }
+})
+
+// 多语言 AI 同步/生成：把源语言(中文)内容翻译为指定语言并 upsert 到目标语言。
+// body: { type: 'page'|'doc'|'news'|'nav', ids: number[], targetLangs: string[] }
+router.post('/sync', authenticateToken, requireEditor, logActivity('sync', 'ai'), async (req, res) => {
+  try {
+    const { type, ids, targetLangs } = req.body || {}
+    if (!['page', 'doc', 'news', 'nav'].includes(type)) {
+      return res.status(400).json({ success: false, message: '不支持的同步类型' })
+    }
+    const idList = (Array.isArray(ids) ? ids : [ids]).map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    const langs = (Array.isArray(targetLangs) ? targetLangs : [targetLangs]).filter(Boolean)
+    if (idList.length === 0 || langs.length === 0) {
+      return res.status(400).json({ success: false, message: '请提供要同步的记录与目标语言' })
+    }
+
+    const results = []
+    for (const srcId of idList) {
+      for (const lang of langs) {
+        const out = await syncOne({ type, srcId, lang, userId: req.user?.id || null })
+        results.push(out)
+      }
+    }
+    res.json({ success: true, message: 'AI 同步完成', data: results })
+  } catch (error) {
+    console.error('AI sync failed:', error)
+    res.status(500).json({ success: false, message: error.message || 'AI 同步失败' })
+  }
+})
+
+async function syncOne({ type, srcId, lang, userId }) {
+  let source
+  if (type === 'page') {
+    const [rows] = await db.execute("SELECT * FROM pages WHERE id = ? AND lang = 'zh'", [srcId])
+    source = rows[0]
+  } else if (type === 'doc') {
+    const [rows] = await db.execute("SELECT * FROM docs WHERE id = ? AND lang = 'zh'", [srcId])
+    source = rows[0]
+  } else if (type === 'news') {
+    const [rows] = await db.execute("SELECT * FROM news WHERE id = ? AND lang = 'zh'", [srcId])
+    source = rows[0]
+  } else if (type === 'nav') {
+    const [rows] = await db.execute("SELECT * FROM navigation WHERE id = ? AND lang = 'zh'", [srcId])
+    source = rows[0]
+  }
+  if (!source) throw new Error(`未找到 lang=zh 的 ${type} 记录 id=${srcId}`)
+
+  const translated = type === 'page' ? null : await translateItem({ type, source, targetLang: lang })
+
+  let targetId = null
+  if (type === 'page') {
+    // template_data 为 MySQL json 列，mysql2 可能已返回对象；兼容字符串与对象
+    const rawTd = source.template_data
+    const td =
+      rawTd && typeof rawTd === 'object'
+        ? rawTd
+        : (() => { try { return JSON.parse(rawTd) } catch { return { components: [] } } })()
+    const srcWithComponents = { ...source, components: (td && td.components) || [], template_data: td || {} }
+    const tr = await translateItem({ type, source: srcWithComponents, targetLang: lang })
+    const [exist] = await db.execute('SELECT id FROM pages WHERE lang = ? AND slug = ?', [lang, source.slug])
+    const payloadTr = {
+      title: tr.title, excerpt: source.excerpt || null, meta_title: tr.meta_title || null,
+      meta_description: tr.meta_description || null, published: source.published,
+      sort_order: source.sort_order || 0, featured_image: source.featured_image || null,
+      template_data: JSON.stringify(tr.template_data || {})
+    }
+    if (exist.length > 0) {
+      targetId = exist[0].id
+      await db.execute(
+        `UPDATE pages SET title=?, excerpt=?, meta_title=?, meta_description=?, template_data=?, updated_at=NOW() WHERE id=?`,
+        [payloadTr.title, payloadTr.excerpt, payloadTr.meta_title, payloadTr.meta_description, payloadTr.template_data, targetId]
+      )
+    } else {
+      const [r] = await db.execute(
+        `INSERT INTO pages (title, slug, lang, content, excerpt, featured_image, meta_title, meta_description, published, sort_order, template_data, created_by)
+         VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [payloadTr.title, source.slug, lang, payloadTr.excerpt, payloadTr.featured_image,
+         payloadTr.meta_title, payloadTr.meta_description, payloadTr.published, payloadTr.sort_order,
+         payloadTr.template_data, userId]
+      )
+      targetId = r.insertId
+    }
+  } else if (type === 'doc') {
+    const [exist] = await db.execute('SELECT id FROM docs WHERE lang = ? AND slug = ?', [lang, source.slug])
+    let contentFormat = source.content_format || 'markdown'
+    let status = source.status || 'draft'
+    if (exist.length > 0) {
+      targetId = exist[0].id
+      await db.execute(
+        `UPDATE docs SET title=?, summary=?, content=?, updated_at=NOW() WHERE id=?`,
+        [translated.title, translated.summary || null, translated.content || '', targetId]
+      )
+    } else {
+      const [r] = await db.execute(
+        `INSERT INTO docs (title, slug, lang, parent_id, sort_order, status, type, content_format, content, summary, created_by, updated_by)
+         VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [translated.title, source.slug, lang, source.sort_order || 0, status, source.type || 'doc',
+         contentFormat, translated.content || '', translated.summary || null, userId, userId]
+      )
+      targetId = r.insertId
+    }
+  } else if (type === 'news') {
+    const [exist] = await db.execute('SELECT id FROM news WHERE lang = ? AND source_id = ?', [lang, srcId])
+    if (exist.length > 0) {
+      targetId = exist[0].id
+      await db.execute('UPDATE news SET title=?, summary=? WHERE id=?', [translated.title, translated.summary || '', targetId])
+    } else {
+      const [r] = await db.execute(
+        `INSERT INTO news (title, date, summary, link, image, pinned, published, lang, source_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [translated.title, source.date || null, translated.summary || '', source.link || '', source.image || '',
+         source.pinned ? 1 : 0, source.published, lang, srcId]
+      )
+      targetId = r.insertId
+    }
+  } else if (type === 'nav') {
+    const [exist] = await db.execute('SELECT id FROM navigation WHERE lang = ? AND source_id = ?', [lang, srcId])
+    const parentId = source.parent_id ? await mapNavParent(source.parent_id, lang) : null
+    if (exist.length > 0) {
+      targetId = exist[0].id
+      await db.execute('UPDATE navigation SET name=?, url=?, parent_id=?, sort_order=?, is_active=? WHERE id=?',
+        [translated.name, source.url, parentId, source.sort_order || 0, source.is_active, targetId])
+    } else {
+      const [r] = await db.execute(
+        `INSERT INTO navigation (name, url, target, parent_id, sort_order, is_active, lang, source_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [translated.name, source.url, source.target || '_self', parentId, source.sort_order || 0, source.is_active, lang, srcId]
+      )
+      targetId = r.insertId
+    }
+  }
+
+  return { type, srcId, lang, targetId }
+}
+
+async function mapNavParent(zhParentId, lang) {
+  const [rows] = await db.execute(
+    'SELECT id FROM navigation WHERE lang = ? AND source_id = ? LIMIT 1', [lang, zhParentId]
+  )
+  return rows.length ? rows[0].id : null
+}
+
+// 系统设置 AI 一键转换：把中文的本地化设置键翻译并写为所选语言版本（共享键保持 zh）
+const LOCALIZED_SETTINGS = [
+  'site_name', 'company_name', 'site_description', 'site_keywords',
+  'copyright', 'site_statement', 'footer_layout', 'social_links', 'quick_links',
+  'transition_main_title', 'transition_subtitle', 'address', 'footer_social_title'
+]
+router.post('/sync-settings', authenticateToken, requireEditor, logActivity('sync', 'ai'), async (req, res) => {
+  try {
+    const targetLangs = (Array.isArray(req.body?.targetLangs) ? req.body.targetLangs : [req.body?.targetLangs]).filter(Boolean)
+    if (targetLangs.length === 0) return res.status(400).json({ success: false, message: '请选择目标语言' })
+
+    const ph = LOCALIZED_SETTINGS.map(() => '?').join(',')
+    const [rows] = await db.execute(
+      `SELECT setting_key, setting_value, setting_type FROM settings WHERE lang = 'zh' AND setting_key IN (${ph})`,
+      LOCALIZED_SETTINGS
+    )
+    const zhMap = {}
+    for (const r of rows) {
+      let v = r.setting_value
+      if (r.setting_type === 'json') { try { v = JSON.parse(v) } catch { v = {} } }
+      else if (r.setting_type === 'boolean') v = v === 'true' || v === '1'
+      else if (r.setting_type === 'number') v = parseFloat(v)
+      zhMap[r.setting_key] = v
+    }
+
+    const results = []
+    for (const lang of targetLangs) {
+      const tr = await translateItem({ type: 'settings', source: zhMap, targetLang: lang })
+      const data = (tr && tr.data) || {}
+      for (const [key, value] of Object.entries(data)) {
+        if (!LOCALIZED_SETTINGS.includes(key)) continue
+        const isObj = value && typeof value === 'object'
+        const sv = isObj ? JSON.stringify(value) : String(value)
+        const st = isObj ? 'json' : typeof value === 'boolean' ? 'boolean' : 'string'
+        await db.execute(
+          `INSERT INTO settings (setting_key, setting_value, setting_type, lang) VALUES (?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), setting_type = VALUES(setting_type), lang = VALUES(lang)`,
+          [key, sv, st, lang]
+        )
+      }
+      results.push({ lang })
+    }
+    res.json({ success: true, message: '设置已转换到所选语言', data: results })
+  } catch (error) {
+    console.error('AI sync-settings failed:', error)
+    res.status(500).json({ success: false, message: error.message || '设置 AI 转换失败' })
   }
 })
 

@@ -14,6 +14,9 @@ import {
   X
 } from 'lucide-react'
 import { navigationApi, pagesApi } from '@/utils/api'
+import LanguageSelect from '@/components/admin/LanguageSelect'
+import AiSyncModal from '@/components/admin/AiSyncModal'
+import { Sparkles } from 'lucide-react'
 import { formatDateTime } from '@/utils'
 import toast from 'react-hot-toast'
 import {
@@ -353,6 +356,39 @@ export default function NavigationManagePage() {
   const [selectedItem, setSelectedItem] = useState<NavigationItem | null>(null)
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const [pages, setPages] = useState<PageContent[]>([])
+  const [lang, setLang] = useState('zh')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [syncOpen, setSyncOpen] = useState(false)
+  const [syncIds, setSyncIds] = useState<string[]>([])
+
+  const collectIdsUnder = (id: string | number): string[] => {
+    const out = [String(id)]
+    for (const n of navItems) {
+      if (n.parent_id != null && String(n.parent_id) === String(id)) out.push(...collectIdsUnder(n.id))
+    }
+    return out
+  }
+  const toggleSelect = (id: string | number) =>
+    setSelectedIds((prev) => {
+      const cur = [...prev]
+      const group = collectIdsUnder(id)
+      if (cur.includes(String(id))) return cur.filter((x) => !group.includes(x))
+      for (const g of group) if (!cur.includes(g)) cur.push(g)
+      return cur
+    })
+  const toggleSelectAll = () =>
+    setSelectedIds((prev) => (prev.length === navItems.length ? [] : navItems.map((n) => String(n.id))))
+  const clearSelection = () => setSelectedIds([])
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!window.confirm(`确定删除选中的 ${selectedIds.length} 个导航项？子项会一并删除。`)) return
+    for (const id of selectedIds) {
+      try { await navigationApi.delete(id) } catch { /* 逐条容错 */ }
+    }
+    clearSelection()
+    fetchNavigation()
+  }
 
   const {
     register,
@@ -366,12 +402,12 @@ export default function NavigationManagePage() {
   useEffect(() => {
     fetchNavigation()
     fetchPages()
-  }, [])
+  }, [lang])
 
   const fetchNavigation = async () => {
     try {
       setIsLoading(true)
-      const response = await navigationApi.getAdmin()
+      const response = await navigationApi.getAdmin(lang)
       
       if (response.success) {
         setNavItems(response.data || [])
@@ -394,7 +430,8 @@ export default function NavigationManagePage() {
       while (hasMore) {
         const response = await pagesApi.getAll({
           page,
-          limit: 50
+          limit: 50,
+          lang
         })
 
         if (response.success && response.data) {
@@ -417,7 +454,7 @@ export default function NavigationManagePage() {
 
   const handleCreate = async (data: NavigationForm) => {
     try {
-      const response = await navigationApi.create(data)
+      const response = await navigationApi.create({ ...data, lang })
       
       if (response.success) {
         toast.success('导航项目创建成功')
@@ -514,6 +551,12 @@ export default function NavigationManagePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 flex-1">
               <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(String(item.id))}
+                  onChange={() => toggleSelect(String(item.id))}
+                  className="rounded border-gray-300"
+                />
                 <GripVertical className="w-4 h-4 text-gray-400 cursor-grab" />
                 
                 {hasChildren && (
@@ -563,6 +606,15 @@ export default function NavigationManagePage() {
             </div>
             
             <div className="flex items-center space-x-2">
+              {lang === 'zh' && (
+                <button
+                  onClick={() => { setSyncIds([String(item.id)]); setSyncOpen(true); }}
+                  className="p-2 text-gray-400 hover:text-violet-500 transition-colors"
+                  title="AI 同步"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </button>
+              )}
               <button
                 onClick={() => openEditModal(item)}
                 className="p-2 text-gray-400 hover:text-tech-accent transition-colors"
@@ -637,7 +689,18 @@ export default function NavigationManagePage() {
           <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>
         )}
       </div>
-      
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">语言</label>
+        <LanguageSelect
+          value={selectedItem?.lang || lang}
+          disabled={!!showEditModal}
+          onChange={(code) => setLang(code)}
+          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-tech-accent focus:border-transparent"
+        />
+        {showEditModal && <p className="mt-1 text-xs text-gray-400">已有导航的语言不可修改</p>}
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           选择页面 (可选)
@@ -767,7 +830,13 @@ export default function NavigationManagePage() {
               管理网站的导航菜单结构
             </p>
           </div>
-          
+
+          <LanguageSelect
+            value={lang}
+            includeDisabled
+            onChange={(code) => setLang(code)}
+            className="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-tech-dark text-gray-900 dark:text-white px-3 py-2 text-sm"
+          />
           <button
             onClick={() => {
               reset({
@@ -787,6 +856,25 @@ export default function NavigationManagePage() {
           </button>
         </div>
 
+        {selectedIds.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-violet-200 bg-violet-50 dark:bg-violet-900/20 px-4 py-2">
+            <span className="text-sm text-gray-700 dark:text-gray-300">已选 {selectedIds.length} 项</span>
+            <button onClick={toggleSelectAll} className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700">全选</button>
+            {lang === 'zh' && (
+              <button
+                onClick={() => { setSyncIds(selectedIds); setSyncOpen(true); }}
+                className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
+              >
+                <Sparkles className="w-4 h-4 mr-1" />批量 AI 同步
+              </button>
+            )}
+            <button onClick={handleBatchDelete} className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">
+              <Trash2 className="w-4 h-4 mr-1" />批量删除
+            </button>
+            <button onClick={clearSelection} className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700">取消选择</button>
+          </div>
+        )}
+        <AiSyncModal open={syncOpen} onClose={() => setSyncOpen(false)} type="nav" ids={syncIds} onDone={() => { clearSelection(); fetchNavigation(); }} />
         {/* 导航列表 */}
         {isLoading ? (
           <div className="flex items-center justify-center h-64">

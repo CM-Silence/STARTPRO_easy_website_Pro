@@ -15,6 +15,7 @@ import {
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
 import { pagesApi } from '@/utils/api'
+import LanguageSelect from '@/components/admin/LanguageSelect'
 import type { PageForm, PageContent } from '@/types'
 import { generateHtmlFromComponents } from '@/lib/pageContent/generateHtmlFromComponents'
 
@@ -247,6 +248,12 @@ export default function EditPagePage() {
                     {errors.title && (
                       <p className="mt-1 text-sm text-red-500">{errors.title.message}</p>
                     )}
+                  </div>
+
+                  {/* 语言（不可改） */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">语言</label>
+                    <LanguageSelect value={(pageData as any).lang || 'zh'} onChange={() => {}} disabled />
                   </div>
 
                   {/* URL别名 */}

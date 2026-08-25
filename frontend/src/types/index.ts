@@ -204,6 +204,7 @@ export interface Settings {
     external?: boolean
   }>
   footer_layout?: FooterLayout
+  footer_social_title?: string
   footer_social_links?: FooterSocialLink[]
   theme_background?: ThemeBackgroundChoice
   page_transition?: PageTransitionChoice

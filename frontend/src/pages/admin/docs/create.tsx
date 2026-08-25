@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import AdminLayout from '@/components/AdminLayout'
 import DocForm from '@/components/docs/DocForm'
 import DocTreePanel from '@/components/docs/DocTreePanel'
+import LanguageSelect from '@/components/admin/LanguageSelect'
 import { docsApi } from '@/utils/api'
 import type { DocNode, Doc } from '@/types'
 import toast from 'react-hot-toast'
@@ -17,10 +18,11 @@ export default function CreateDocPage() {
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
   const [sortOrder, setSortOrder] = useState(0)
+  const [lang, setLang] = useState('zh')
 
   const fetchTree = async () => {
     try {
-      const res = await docsApi.getTree()
+      const res = await docsApi.getTree(lang)
       if (res.success) {
         setTree(res.data || [])
       }
@@ -32,12 +34,12 @@ export default function CreateDocPage() {
 
   useEffect(() => {
     fetchTree()
-  }, [])
+  }, [lang])
 
   const handleSubmitDoc = async (payload: Partial<Doc>) => {
     try {
       setSubmitting(true)
-      const res = await docsApi.create(payload)
+      const res = await docsApi.create({ ...payload, lang })
       if (res.success) {
         toast.success('创建成功')
         router.push(`/admin/docs?select=${res.data?.id}`)
@@ -65,7 +67,8 @@ export default function CreateDocPage() {
         sort_order: sortOrder || 0,
         status: 'draft',
         type: 'folder',
-        content: ''
+        content: '',
+        lang
       })
       if (res.success) {
         toast.success('文件夹创建成功')
@@ -87,6 +90,10 @@ export default function CreateDocPage() {
     <AdminLayout title={isFolder ? '新建文件夹' : '新建文档'} description="创建文档中心内容">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold text-theme-text">{isFolder ? '新建文件夹' : '新建文档'}</h1>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-theme-textSecondary">语言</span>
+          <LanguageSelect value={lang} onChange={setLang} className="theme-input text-sm rounded-lg h-10 px-3" />
+        </div>
       </div>
 
       {isFolder ? (

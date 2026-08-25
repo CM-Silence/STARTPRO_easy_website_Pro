@@ -6,17 +6,19 @@ const {
   requireEditor, 
   logActivity 
 } = require('../middleware/auth')
+const { resolveLang } = require('../utils/resolveLang')
 
 // 获取所有导航项目（公开接口）
 router.get('/', async (req, res) => {
   try {
+    const lang = resolveLang(req.query.lang)
     const [navItems] = await db.execute(`
-      SELECT 
+      SELECT
         id, name, url, target, parent_id, sort_order, is_active
-      FROM navigation 
-      WHERE is_active = true
+      FROM navigation
+      WHERE is_active = true AND lang = ?
       ORDER BY sort_order ASC, id ASC
-    `)
+    `, [lang])
 
     // 构建层次结构
     const buildTree = (items, parentId = null) => {
@@ -47,13 +49,15 @@ router.get('/', async (req, res) => {
 // 获取所有导航项目（管理接口）
 router.get('/admin', authenticateToken, requireEditor, async (req, res) => {
   try {
+    const lang = resolveLang(req.query.lang)
     const [navItems] = await db.execute(`
-      SELECT 
-        id, name, url, target, parent_id, sort_order, is_active,
+      SELECT
+        id, name, url, target, parent_id, sort_order, is_active, lang,
         created_at, updated_at
-      FROM navigation 
+      FROM navigation
+      WHERE lang = ?
       ORDER BY sort_order ASC, id ASC
-    `)
+    `, [lang])
 
     res.json({
       success: true,
@@ -104,7 +108,8 @@ router.post('/',
   logActivity('create', 'navigation'),
   async (req, res) => {
     try {
-      let { name, url, target, parent_id, sort_order, is_active } = req.body
+      let { name, url, target, parent_id, sort_order, is_active, lang } = req.body
+      const resolvedLang = resolveLang(lang)
 
       // 验证必填字段
       if (!name || !url) {
@@ -122,8 +127,8 @@ router.post('/',
       // 如果有父级ID，验证父级是否存在
       if (parent_id) {
         const [parentItems] = await db.execute(
-          'SELECT id FROM navigation WHERE id = ?',
-          [parent_id]
+          'SELECT id FROM navigation WHERE id = ? AND lang = ?',
+          [parent_id, resolvedLang]
         )
 
         if (parentItems.length === 0) {
@@ -137,15 +142,16 @@ router.post('/',
       // 创建导航项目
       const [result] = await db.execute(`
         INSERT INTO navigation (
-          name, url, target, parent_id, sort_order, is_active
-        ) VALUES (?, ?, ?, ?, ?, ?)
+          name, url, target, parent_id, sort_order, is_active, lang
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
       `, [
         name,
         url,
         target || '_self',
         parent_id || null,
         sort_order || 0,
-        is_active !== undefined ? is_active : true
+        is_active !== undefined ? is_active : true,
+        resolvedLang
       ])
 
       res.status(201).json({
@@ -158,7 +164,8 @@ router.post('/',
           target: target || '_self',
           parent_id: parent_id || null,
           sort_order: sort_order || 0,
-          is_active: is_active !== undefined ? is_active : true
+          is_active: is_active !== undefined ? is_active : true,
+          lang: resolvedLang
         }
       })
     } catch (error) {

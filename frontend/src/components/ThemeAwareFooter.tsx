@@ -2,19 +2,22 @@
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import { Mail, Phone, MapPin, ExternalLink } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useLocale } from '@/i18n/LocaleProvider'
 import { getCurrentThemeId, getThemeById } from '@/styles/themes'
 import type { ThemeAwareFooterProps, FooterStyles } from '@/types/navigation'
 import type { FooterLayout, FooterSocialLink, FooterSection } from '@/types'
 import { getDefaultFooterLayout, getDefaultFooterSocialLinks } from '@/constants/footerDefaults'
 
-const DEFAULT_QUICK_LINKS: Array<{ label: string; href: string; external?: boolean }> = [
-  { label: '关于我们', href: '/about' },
-  { label: '产品服务', href: '/services' },
-  { label: '解决方案', href: '/solutions' },
-  { label: '联系我们', href: '/contact' },
-  { label: '隐私政策', href: '/privacy' },
-  { label: '服务条款', href: '/terms' }
+const makeDefaultQuickLinks = (t: TFunction): Array<{ label: string; href: string; external?: boolean }> => [
+  { label: t('footer.linkAbout'), href: '/about' },
+  { label: t('nav.products'), href: '/services' },
+  { label: t('nav.solutions'), href: '/solutions' },
+  { label: t('nav.contact'), href: '/contact' },
+  { label: t('footer.privacy'), href: '/privacy' },
+  { label: t('footer.terms'), href: '/terms' }
 ]
 
 const sanitizeSvg = (svgMarkup: string) =>
@@ -59,6 +62,9 @@ export default function ThemeAwareFooter({
   footerSocialLinks: footerSocialLinksProp
 }: ThemeAwareFooterProps) {
   const { settings } = useSettings()
+  const { t } = useTranslation('common')
+  const { localize } = useLocale()
+  const hrefOf = (url: string) => (url && url.startsWith('/') && !url.startsWith('//') ? localize(url) : url)
 
   const [isClient, setIsClient] = useState(typeof window !== 'undefined')
   const [footerStyles, setFooterStyles] = useState<FooterStyles>({
@@ -120,12 +126,12 @@ export default function ThemeAwareFooter({
   const quickLinks = useMemo(() => {
     const raw = propQuickLinks || settings?.quick_links
     if (Array.isArray(raw) && raw.length) return raw
-    return DEFAULT_QUICK_LINKS
-  }, [propQuickLinks, settings?.quick_links])
+    return makeDefaultQuickLinks(t)
+  }, [propQuickLinks, settings?.quick_links, t])
 
   const providedFooterLayout = footerLayoutProp ?? settings?.footer_layout
   const hasExplicitFooterLayout = providedFooterLayout !== undefined && providedFooterLayout !== null
-  const resolvedFooterLayout: FooterLayout = providedFooterLayout || getDefaultFooterLayout()
+  const resolvedFooterLayout: FooterLayout = providedFooterLayout || getDefaultFooterLayout(t)
 
   const providedSocialLinks = footerSocialLinksProp ?? settings?.footer_social_links
   const hasExplicitFooterSocialLinks = providedSocialLinks !== undefined && providedSocialLinks !== null
@@ -135,8 +141,8 @@ export default function ThemeAwareFooter({
       : []
     if (normalizedLinks.length) return normalizedLinks
     if (hasExplicitFooterSocialLinks) return []
-    return getDefaultFooterSocialLinks()
-  }, [hasExplicitFooterSocialLinks, providedSocialLinks])
+    return getDefaultFooterSocialLinks(t)
+  }, [hasExplicitFooterSocialLinks, providedSocialLinks, t])
 
   const legacySocialLinks = useMemo<FooterSocialLink[]>(() => {
     if (!socialLinks) return []
@@ -164,7 +170,7 @@ export default function ThemeAwareFooter({
       ? []
       : [{
           id: 'quick-links',
-          title: '快速链接',
+          title: t('footer.quickLinks'),
           description: '',
           links: quickLinks.map((link, index) => ({
             id: `quick-link-${index}`,
@@ -181,7 +187,7 @@ export default function ThemeAwareFooter({
     if (socialLinksToRender.length) {
       next.push({
         id: 'social-section',
-        title: '关注我们',
+        title: t('footer.followUs'),
         description: '',
         links: []
       })
@@ -216,7 +222,7 @@ export default function ThemeAwareFooter({
 
   const brandInfo = hasExplicitFooterLayout
     ? (providedFooterLayout?.brand || { name: '', description: '', logo: '' })
-    : (resolvedFooterLayout.brand || getDefaultFooterLayout().brand)
+    : (resolvedFooterLayout.brand || getDefaultFooterLayout(t).brand)
   const brandNameToShow = hasExplicitFooterLayout ? (brandInfo.name || '') : (brandInfo.name || siteName)
 
   const hasContactInfo = !!(contactInfo?.email || contactInfo?.phone || contactInfo?.address)
@@ -363,7 +369,7 @@ export default function ThemeAwareFooter({
                     {(section.links || []).map(link => (
                       <li key={link.id || `${section.id}-${link.label}`}>
                         <Link
-                          href={link.url}
+                          href={hrefOf(link.url)}
                           className="flex items-center text-xs transition-colors duration-300 footer-nav-link"
                           style={{ color: footerStyles.linkColor }}
                           target={link.target || '_self'}
@@ -383,7 +389,7 @@ export default function ThemeAwareFooter({
               <div className="space-y-4 lg:col-span-3">
                 <div className="space-y-3">
                   <h4 className="font-semibold text-sm uppercase tracking-wide" style={{ color: footerStyles.titleColor }}>
-                    关注我们
+                    {(settings as any)?.footer_social_title || t('footer.followUs')}
                   </h4>
                   <div className="flex flex-wrap gap-3">
                     {socialLinksToRender.map(link => {
@@ -391,7 +397,7 @@ export default function ThemeAwareFooter({
                       return (
                         <div key={link.id} className="relative group">
                           <a
-                            href={link.url}
+                            href={hrefOf(link.url)}
                             target={link.target || '_blank'}
                             rel="noopener noreferrer"
                             className="w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-300"
@@ -427,7 +433,7 @@ export default function ThemeAwareFooter({
             <div className="rounded-lg overflow-hidden shadow-2xl border border-black/10 bg-white/95 backdrop-blur-sm">
               <img
                 src={hoverPreview.src}
-                alt={`${hoverPreview.label} 预览图`}
+                alt={`${hoverPreview.label} ${t('footer.previewImage')}`}
                 className="object-contain"
                 style={{ width: 300, maxHeight: 320 }}
               />

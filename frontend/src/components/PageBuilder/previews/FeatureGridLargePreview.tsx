@@ -4,8 +4,10 @@ import { motion } from 'framer-motion'
 import { renderIconVisual, getIconColorStyle } from './common'
 import { HoverFX } from '@/components/motion'
 import { grabMotionSettings } from '@/styles/motion-presets'
+import { useTranslation } from 'react-i18next'
 
 export const FeatureGridLargePreview: React.FC<{ component: TemplateComponent }> = ({ component }) => {
+  const { t } = useTranslation('common')
   const {title, subtitle, features = [], widthOption = 'full', backgroundColorOption = 'default'} = component.props
   const iconColorStyle = getIconColorStyle(component.props)
   const hover = grabMotionSettings(component.props).hover
@@ -91,7 +93,7 @@ export const FeatureGridLargePreview: React.FC<{ component: TemplateComponent }>
                   href={feature.link}
                   className="inline-flex items-center text-primary hover:text-secondary font-medium transition-colors duration-200"
                 >
-                  了解更多
+                  {t('ui.readMore')}
                   <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>

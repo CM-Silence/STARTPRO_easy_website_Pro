@@ -1,8 +1,10 @@
 import React from 'react'
 import { TemplateComponent } from '@/types/templates'
 import { motion, useReducedMotion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 
 export const HeroPreview: React.FC<{ component: TemplateComponent }> = ({ component }) => {
+  const { t } = useTranslation('common')
   const {
     title,
     subtitle,
@@ -105,7 +107,7 @@ export const HeroPreview: React.FC<{ component: TemplateComponent }> = ({ compon
           </div>
         )}
         {backgroundImage && bgImageError && (
-          <div className="absolute top-2 right-2 bg-error/80 text-text-primary text-xs px-2 py-1 rounded">背景图片加载失败</div>
+          <div className="absolute top-2 right-2 bg-error/80 text-text-primary text-xs px-2 py-1 rounded">{t('hero.loadImageError')}</div>
         )}
 
         {/* 主内容 */}

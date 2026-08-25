@@ -10,6 +10,24 @@ const {
   logActivity
 } = require('../middleware/auth')
 const { validateUpdateSettings } = require('../middleware/validation')
+const { resolveLang } = require('../utils/resolveLang')
+
+// 需按语言分库保存的本地化设置键；其余键（主题/字体/ICP/联系方式等）为全局共享，仅写 zh 行
+const LOCALIZED_SETTINGS = [
+  'site_name',
+  'company_name',
+  'site_description',
+  'site_keywords',
+  'copyright',
+  'footer_layout',
+  'social_links',
+  'quick_links',
+  'site_statement',
+  'transition_main_title',
+  'transition_subtitle',
+  'address',
+  'footer_social_title'
+]
 
 const getDefaultFooterLayout = () => ({
   brand: {
@@ -152,15 +170,15 @@ const normalizeFooterSocialLinks = (links) => {
     }))
 }
 
-// 获取所有设置 
+// 获取所有设置
 router.get('/', async (req, res) => {
   try {
+    const lang = resolveLang(req.query.lang)
     const [settings] = await db.execute(
-      'SELECT setting_key, setting_value, setting_type FROM settings ORDER BY setting_key'
+      'SELECT setting_key, setting_value, setting_type, lang FROM settings'
     )
 
-    const settingsObject = {}
-    settings.forEach(setting => {
+    const parse = (setting) => {
       let value = setting.setting_value
 
       switch (setting.setting_type) {
@@ -178,9 +196,21 @@ router.get('/', async (req, res) => {
           }
           break
       }
+      return value
+    }
 
-      settingsObject[setting.setting_key] = value
-    })
+    // 先以 zh 行作全局兜底（共享键只存 zh 行，自动落到各语言），
+    // 再以目标语言行覆盖本地化键；目标语言缺省时回退 zh
+    const settingsObject = {}
+    const applyLang = (targetLang) => {
+      settings.forEach((setting) => {
+        if (setting.lang === targetLang) {
+          settingsObject[setting.setting_key] = parse(setting)
+        }
+      })
+    }
+    applyLang('zh')
+    if (lang !== 'zh') applyLang(lang)
 
     settingsObject.footer_layout = normalizeFooterLayout(settingsObject.footer_layout)
     settingsObject.footer_social_links = normalizeFooterSocialLinks(settingsObject.footer_social_links)
@@ -202,10 +232,15 @@ router.get('/', async (req, res) => {
 router.get('/:key', async (req, res) => {
   try {
     const { key } = req.params
+    const lang = resolveLang(req.query.lang)
 
+    // 目标语言优先，缺失回退 zh（共享键仅存 zh 行）
     const [settings] = await db.execute(
-      'SELECT setting_key, setting_value, setting_type, description FROM settings WHERE setting_key = ?',
-      [key]
+      `SELECT setting_key, setting_value, setting_type, description, lang FROM settings
+       WHERE setting_key = ? AND lang IN (?, 'zh')
+       ORDER BY (lang = ?) DESC
+       LIMIT 1`,
+      [key, lang, lang]
     )
 
     if (settings.length === 0) {
@@ -240,7 +275,8 @@ router.get('/:key', async (req, res) => {
         key: setting.setting_key,
         value,
         type: setting.setting_type,
-        description: setting.description
+        description: setting.description,
+        lang: setting.lang
       }
     })
   } catch (error) {
@@ -252,7 +288,7 @@ router.get('/:key', async (req, res) => {
   }
 })
 
-// 更新设置 
+// 更新设置
 router.put('/',
   authenticateToken,
   requireAdmin,
@@ -261,10 +297,10 @@ router.put('/',
   async (req, res) => {
     try {
       const settingsData = req.body
-      console.log('接收到的设置数据:', settingsData)
-      console.log('请求头:', req.headers)
+      const editLang = resolveLang(req.body.lang || req.query.lang)
 
       for (const [key, value] of Object.entries(settingsData)) {
+        if (key === 'lang') continue
         let normalizedValue = value
 
         if (key === 'footer_layout') {
@@ -275,22 +311,13 @@ router.put('/',
 
         let settingValue = normalizedValue
 
-
         if (typeof normalizedValue === 'object' && normalizedValue !== null) {
           settingValue = JSON.stringify(normalizedValue)
-          // 注意：此处是代码中的乱码，我推测并修复为可读中文。
-          // 原乱码：'锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟矫ｏ拷转锟斤拷为JSON锟街凤拷锟斤拷:'
-          console.log('复杂设置，转换为JSON字符串:', key, settingValue) 
         } else if (typeof normalizedValue === 'boolean') {
           settingValue = normalizedValue ? 'true' : 'false'
-          // 原乱码：'锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷:'
-          console.log('布尔值设置:', key, settingValue) 
         } else {
           settingValue = String(normalizedValue)
-          // 原乱码：'锟街凤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷:'
-          console.log('字符串设置:', key, settingValue) 
         }
-        console.log('更新设置:', key, settingValue)
 
         let settingType = 'string'
         if (typeof normalizedValue === 'object' && normalizedValue !== null) {
@@ -301,23 +328,19 @@ router.put('/',
           settingType = 'number'
         }
 
-        console.log('设置类型:', key, settingType)
+        // 本地化键写当前语言行；共享键（主题/ICP/联系方式/…）写 zh 行
+        const targetLang = LOCALIZED_SETTINGS.includes(key) ? editLang : 'zh'
 
         await db.execute(`
-          INSERT INTO settings (setting_key, setting_value, setting_type, updated_at)
-          VALUES (?, ?, ?, NOW())
+          INSERT INTO settings (setting_key, setting_value, setting_type, lang, updated_at)
+          VALUES (?, ?, ?, ?, NOW())
           ON DUPLICATE KEY UPDATE
           setting_value = VALUES(setting_value),
           setting_type = VALUES(setting_type),
+          lang = VALUES(lang),
           updated_at = NOW()
-        `, [key, settingValue, settingType])
+        `, [key, settingValue, settingType, targetLang])
       }
-
-      const [updatedSettings] = await db.execute(
-        'SELECT setting_key, setting_value FROM settings WHERE setting_key IN (?, ?, ?, ?, ?, ?)',
-        ['site_theme', 'quick_links', 'copyright', 'footer_layout', 'footer_social_links', 'theme_background']
-      )
-      console.log('更新后的设置值:', updatedSettings)
 
       res.json({
         success: true,
@@ -342,6 +365,7 @@ router.put('/:key',
     try {
       const { key } = req.params
       const { value, type } = req.body
+      const lang = resolveLang(req.body.lang || req.query.lang)
 
       if (value === undefined) {
         return res.status(400).json({
@@ -366,14 +390,17 @@ router.put('/:key',
         settingValue = String(value)
       }
 
+      const targetLang = LOCALIZED_SETTINGS.includes(key) ? lang : 'zh'
+
       await db.execute(`
-        INSERT INTO settings (setting_key, setting_value, setting_type, updated_at) 
-        VALUES (?, ?, ?, NOW())
-        ON DUPLICATE KEY UPDATE 
-        setting_value = VALUES(setting_value), 
+        INSERT INTO settings (setting_key, setting_value, setting_type, lang, updated_at)
+        VALUES (?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+        setting_value = VALUES(setting_value),
         setting_type = VALUES(setting_type),
+        lang = VALUES(lang),
         updated_at = NOW()
-      `, [key, settingValue, settingType])
+      `, [key, settingValue, settingType, targetLang])
 
       res.json({
         success: true,
@@ -397,10 +424,11 @@ router.delete('/:key',
   async (req, res) => {
     try {
       const { key } = req.params
+      const lang = resolveLang(req.query.lang)
 
       const [existing] = await db.execute(
-        'SELECT setting_key FROM settings WHERE setting_key = ?',
-        [key]
+        'SELECT setting_key FROM settings WHERE setting_key = ? AND lang = ?',
+        [key, lang]
       )
 
       if (existing.length === 0) {
@@ -410,7 +438,7 @@ router.delete('/:key',
         })
       }
 
-      await db.execute('DELETE FROM settings WHERE setting_key = ?', [key])
+      await db.execute('DELETE FROM settings WHERE setting_key = ? AND lang = ?', [key, lang])
 
       res.json({
         success: true,
@@ -455,8 +483,8 @@ router.post('/reset',
 
       for (const setting of defaultSettings) {
         await db.execute(
-          'INSERT INTO settings (setting_key, setting_value, setting_type) VALUES (?, ?, ?)',
-          [setting.key, setting.value, setting.type]
+          'INSERT INTO settings (setting_key, setting_value, setting_type, lang) VALUES (?, ?, ?, ?)',
+          [setting.key, setting.value, setting.type, 'zh']
         )
       }
 

@@ -1,27 +1,31 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState, useEffect, useCallback } from 'react'
-import { settingsApi, navigationApi } from '@/utils/api'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
+import { settingsApi, navigationApi, languagesApi } from '@/utils/api'
+import { useLocale } from '@/i18n/LocaleProvider'
+import { coveredNavigate } from '@/lib/transitionNavigation'
 import type { NavigationItem } from '@/types'
 import { getCurrentThemeId, getThemeById } from '@/styles/themes'
 import type { NavItem, ThemeAwareHeaderProps, NavStyles } from '@/types/navigation'
 
-const defaultNavigation: NavItem[] = [
-  { label: '首页', href: '/' },
+const makeDefaultNavigation = (t: TFunction): NavItem[] => [
+  { label: t('nav.home'), href: '/' },
   {
-    label: '产品服务',
+    label: t('nav.products'),
     href: '/services',
     children: [
-      { label: '技术咨询', href: '/services/consulting' },
-      { label: '软件开发', href: '/services/development' },
-      { label: '系统集成', href: '/services/integration' }
+      { label: t('nav.consulting'), href: '/services/consulting' },
+      { label: t('nav.software'), href: '/services/development' },
+      { label: t('nav.integration'), href: '/services/integration' }
     ]
   },
-  { label: '解决方案', href: '/solutions' },
-  { label: '案例展示', href: '/cases' },
-  { label: '关于我们', href: '/about' },
-  { label: '联系我们', href: '/contact' }
+  { label: t('nav.solutions'), href: '/solutions' },
+  { label: t('nav.cases'), href: '/cases' },
+  { label: t('nav.about'), href: '/about' },
+  { label: t('nav.contact'), href: '/contact' }
 ]
 
 /** 深色主题 ID 列表 — 这些主题的浅色文字在白色毛玻璃上不可读 */
@@ -76,9 +80,13 @@ export default function ThemeAwareHeader({
   siteName,
   navigation
 }: ThemeAwareHeaderProps) {
+  const { t } = useTranslation('common')
   const [isOpen, setIsOpen] = useState(false)
+  const [langOpen, setLangOpen] = useState(false)
+  const [languages, setLanguages] = useState<{ id: number; display_name: string; code: string; suffix: string }[]>([])
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
+  const defaultNavigation = useMemo(() => makeDefaultNavigation(t), [t])
   const [dynamicNavigation, setDynamicNavigation] = useState<NavItem[]>(defaultNavigation)
   const [dynamicSettings, setDynamicSettings] = useState<{ site_name?: string; site_logo?: string; company_name?: string }>({})
   const [isLoading, setIsLoading] = useState(true)
@@ -114,10 +122,11 @@ export default function ThemeAwareHeader({
   }, [updateThemeStyles])
 
   // --- 获取动态导航数据 ---
+  const { locale, suffix, localize } = useLocale()
   useEffect(() => {
     const fetchDynamicData = async () => {
       try {
-        const navResponse = await navigationApi.getAll()
+        const navResponse = await navigationApi.getAll(locale)
         if (navResponse.success && navResponse.data) {
           const navItems = navResponse.data.map((item: NavigationItem) => ({
             label: item.name,
@@ -135,7 +144,7 @@ export default function ThemeAwareHeader({
         }
 
         try {
-          const settingsResponse = await settingsApi.get()
+          const settingsResponse = await settingsApi.get(locale)
           if (settingsResponse.success && settingsResponse.data) {
             setDynamicSettings(settingsResponse.data)
           }
@@ -150,6 +159,20 @@ export default function ThemeAwareHeader({
     }
 
     fetchDynamicData()
+  }, [locale, defaultNavigation])
+
+  // --- 语言切换器：读取已启用的语言（仅一个时隐藏） ---
+  useEffect(() => {
+    let mounted = true
+    languagesApi
+      .getEnabled()
+      .then((res) => {
+        if (mounted && res.success) setLanguages(res.data || [])
+      })
+      .catch(() => {})
+    return () => {
+      mounted = false
+    }
   }, [])
 
   // --- 辅助函数 ---
@@ -165,6 +188,18 @@ export default function ThemeAwareHeader({
 
   const toggleDropdown = (label: string) => {
     setActiveDropdown(activeDropdown === label ? null : label)
+  }
+
+  const switchLocale = (target: { code: string; suffix: string }) => {
+    setLangOpen(false)
+    const hasQuery = router.asPath.includes('?')
+    const query = hasQuery ? router.asPath.slice(router.asPath.indexOf('?')) : ''
+    const raw = hasQuery ? router.asPath.split('?')[0] : router.asPath
+    const inner = suffix && raw.startsWith(`/${suffix}`) ? raw.slice(suffix.length + 1) : raw
+    const next = target.suffix ? `/${target.suffix}${inner}` : inner
+    const to = (next || '/') + query
+    // 对齐项目转场：先让幕布盖满再导航；幕布不可用时直接跳转
+    if (!coveredNavigate(to)) router.push(to)
   }
 
   // --- 数据合并 ---
@@ -197,7 +232,7 @@ export default function ThemeAwareHeader({
         <div className="flex items-center justify-between" style={{ height: '70px' }}>
 
           {/* === Logo === */}
-          <Link href="/" className="flex items-center space-x-3 group no-underline">
+          <Link href={localize('/')} className="flex items-center space-x-3 group no-underline">
             {currentLogo ? (
               <div className="animate-logo-float">
                 <img
@@ -229,7 +264,7 @@ export default function ThemeAwareHeader({
                   {item.children ? (
                   <>
                     <Link
-                      href={item.href}
+                      href={localize(item.href)}
                       className={`flex items-center px-4 py-2 rounded-md text-sm font-medium nav-link-gradient nav-link-underline ${isActiveLink(item.href) ? 'nav-active font-semibold' : ''}`}
                       style={{
                         backgroundImage: `linear-gradient(90deg, ${headerStyles.textColor}, ${headerStyles.textColor})`,
@@ -262,7 +297,7 @@ export default function ThemeAwareHeader({
                             {item.children.map((child: NavItem) => (
                               <Link
                                 key={child.label}
-                                href={child.href}
+                                href={localize(child.href)}
                                 className={`dropdown-item-accent block px-6 py-3 text-sm transition-colors duration-200 ${isActiveLink(child.href) ? 'font-semibold' : ''}`}
                                 style={{
                                   color: isActiveLink(child.href) ? headerStyles.activeColor : headerStyles.textColor,
@@ -285,7 +320,7 @@ export default function ThemeAwareHeader({
                   </>
                 ) : (
                   <Link
-                    href={item.href}
+                    href={localize(item.href)}
                     className={`flex items-center px-4 py-2 rounded-md text-sm font-medium nav-link-gradient nav-link-underline ${isActiveLink(item.href) ? 'nav-active font-semibold' : ''}`}
                     style={{
                       backgroundImage: `linear-gradient(90deg, ${headerStyles.textColor}, ${headerStyles.textColor})`,
@@ -307,13 +342,74 @@ export default function ThemeAwareHeader({
             ))}
           </nav>
 
-          {/* === 右侧操作区-汉堡菜单=== */}
+          {/* === 右侧操作区：语言切换 + 汉堡菜单 === */}
           <div className="flex items-center">
+            {/* 语言切换器：停留在当前路径，仅切换语言前缀 */}
+            {languages.length > 1 && (
+            <div
+              className="relative mr-1"
+              onMouseEnter={() => setLangOpen(true)}
+              onMouseLeave={() => setLangOpen(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setLangOpen((v) => !v)}
+                className="flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:opacity-80"
+                style={{ color: headerStyles.textColor }}
+                aria-haspopup="menu"
+                aria-expanded={langOpen}
+              >
+                <img
+                  src="/system-default/bootstrap-icons/globe2.svg"
+                  alt=""
+                  className="w-4 h-4"
+                />
+                <span>{languages.find((l) => l.code === locale)?.display_name || locale}</span>
+                <svg
+                  className={`w-4 h-4 transition-transform duration-200 ${langOpen ? 'rotate-180' : ''}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <AnimatePresence>
+                {langOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                    className="absolute right-0 top-full pt-1.5 w-28 z-[1200]"
+                    style={{ transformOrigin: 'top right' }}
+                  >
+                    <div className="dropdown-glass overflow-hidden rounded-lg">
+                      <div className="py-1">
+                        {languages.map((l) => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => switchLocale(l)}
+                            className={`block w-full text-left px-4 py-2 text-sm transition-colors ${locale === l.code ? 'font-semibold' : ''}`}
+                            style={{
+                              color: locale === l.code ? headerStyles.activeColor : headerStyles.textColor,
+                            }}
+                          >
+                            {l.display_name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            )}
+
             <div
               className={`hamburger ${isOpen ? 'active' : ''}`}
               onClick={toggleMenu}
               role="button"
-              aria-label="切换菜单"
+              aria-label={t('nav.toggleMenu')}
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter') toggleMenu() }}
             >
@@ -343,7 +439,7 @@ export default function ThemeAwareHeader({
                     <div className="rounded-lg overflow-hidden">
                       <div className="flex items-center justify-between">
                         <Link
-                          href={item.href}
+                          href={localize(item.href)}
                           onClick={() => setIsOpen(false)}
                           className={`flex-1 px-5 py-4 text-left text-base font-medium transition-colors duration-200 ${isActiveLink(item.href) ? 'font-semibold' : ''}`}
                           style={{
@@ -356,7 +452,7 @@ export default function ThemeAwareHeader({
                           onClick={() => toggleDropdown(item.label)}
                           className="p-4 transition-colors duration-200"
                           style={{ color: headerStyles.textColor }}
-                          aria-label={`展开 ${item.label} 子菜单`}
+                          aria-label={t('nav.expandSubmenu', { label: item.label })}
                         >
                           <svg
                             className={`w-5 h-5 transition-transform duration-300 ${activeDropdown === item.label ? 'rotate-180' : ''}`}
@@ -380,7 +476,7 @@ export default function ThemeAwareHeader({
                               {item.children.map((child: NavItem) => (
                                 <Link
                                   key={child.label}
-                                  href={child.href}
+                                  href={localize(child.href)}
                                   onClick={() => setIsOpen(false)}
                                   className={`dropdown-item-accent block px-8 py-4 text-sm transition-all duration-200`}
                                   style={{
@@ -406,7 +502,7 @@ export default function ThemeAwareHeader({
                     </div>
                   ) : (
                     <Link
-                      href={item.href}
+                      href={localize(item.href)}
                       onClick={() => setIsOpen(false)}
                       className={`block px-5 py-4 text-base font-medium transition-colors duration-200 rounded-lg ${isActiveLink(item.href) ? 'font-semibold' : ''}`}
                       style={{

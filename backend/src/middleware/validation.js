@@ -57,6 +57,7 @@ const pageSchemas = {
     published: Joi.boolean().default(false),
     sort_order: Joi.number().integer().min(0).default(0),
     category: Joi.string().valid('general', 'product', 'about', 'news', 'help', 'legal').default('general'),
+    lang: Joi.string().valid('zh', 'en').optional(),
     template_data: Joi.alternatives([
       Joi.string().allow('').allow(null),
       Joi.object({
@@ -80,6 +81,7 @@ const pageSchemas = {
     published: Joi.boolean().optional(),
     sort_order: Joi.number().integer().min(0).optional(),
     category: Joi.string().valid('general', 'product', 'about', 'news', 'help', 'legal').optional(),
+    lang: Joi.string().valid('zh', 'en').optional(),
     template_data: Joi.alternatives([
       Joi.string().allow('').allow(null),
       Joi.object({
@@ -110,6 +112,7 @@ const footerSectionSchema = Joi.object({
 // 设置验证规则
 const settingsSchemas = {
   update: Joi.object({
+    lang: Joi.string().valid('zh', 'en').optional(),
     site_name: Joi.string().max(100).optional(),
     company_name: Joi.string().max(100).optional(),
     site_description: Joi.string().max(500).optional(),
@@ -170,6 +173,7 @@ const settingsSchemas = {
       }).required(),
       sections: Joi.array().items(footerSectionSchema).default([])
     }).optional(),
+    footer_social_title: Joi.string().max(100).optional().allow('', null),
     footer_social_links: Joi.array().items(
       Joi.object({
         id: Joi.string().max(100).required(),
@@ -285,7 +289,8 @@ const querySchemas = {
   pagination: Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(500).default(100),
-    search: Joi.string().max(100).optional().allow('')
+    search: Joi.string().max(100).optional().allow(''),
+    lang: Joi.string().valid('zh', 'en').optional()
   }).unknown(true)
 }
 
@@ -295,6 +300,7 @@ const docSchemas = {
   create: Joi.object({
     title: Joi.string().min(1).max(255).required(),
     slug: Joi.string().pattern(slugPathPattern).min(1).max(255).required(),
+    lang: Joi.string().valid('zh', 'en').optional(),
     type: Joi.string().valid('doc', 'folder').default('doc'),
     content_format: Joi.string().valid('html', 'markdown').default('markdown'),
     parent_id: Joi.alternatives().try(

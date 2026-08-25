@@ -17,9 +17,12 @@ import {
   ExternalLink,
   Copy,
   Link as LinkIcon,
-  X
+  X,
+  Sparkles
 } from 'lucide-react'
 import { pagesApi, tagsApi } from '@/utils/api'
+import LanguageSelect from '@/components/admin/LanguageSelect'
+import AiSyncModal from '@/components/admin/AiSyncModal'
 import { formatDateTime } from '@/utils'
 import toast from 'react-hot-toast'
 import type { PageContent, PaginatedResponse, Tag } from '@/types'
@@ -44,6 +47,26 @@ export default function AdminPagesPage() {
   const [isTagModalOpen, setIsTagModalOpen] = useState(false)
   const [pageSize, setPageSize] = useState<number>(100)
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
+  const [lang, setLang] = useState('zh')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [syncOpen, setSyncOpen] = useState(false)
+  const [syncIds, setSyncIds] = useState<string[]>([])
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  const toggleSelectAll = () =>
+    setSelectedIds((prev) => (prev.length === pages.length ? [] : pages.map((p) => String(p.id))))
+  const clearSelection = () => setSelectedIds([])
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.length === 0) return
+    if (!window.confirm(`确定删除选中的 ${selectedIds.length} 个页面？此操作无法撤销。`)) return
+    for (const id of selectedIds) {
+      try { await pagesApi.delete(id) } catch { /* 逐条容错 */ }
+    }
+    clearSelection()
+    fetchPages()
+  }
   const [isTagManagerOpen, setIsTagManagerOpen] = useState(false)
   const [newTagName, setNewTagName] = useState('')
   const [newTagSlug, setNewTagSlug] = useState('')
@@ -138,6 +161,7 @@ export default function AdminPagesPage() {
         page: currentPage,
         limit: pageSize,
         search: debouncedSearchTerm || undefined,
+        lang,
         _t: Date.now()
       }
 
@@ -184,7 +208,7 @@ export default function AdminPagesPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [currentPage, debouncedSearchTerm, filter, selectedTagFilters, includeNoTagsFilter, pageSize, sortOrder])
+  }, [currentPage, debouncedSearchTerm, filter, selectedTagFilters, includeNoTagsFilter, pageSize, sortOrder, lang])
 
   useEffect(() => {
     fetchPages()
@@ -396,6 +420,16 @@ export default function AdminPagesPage() {
               </div>
 
               <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-700 dark:text-gray-300">语言</span>
+                <LanguageSelect
+                  value={lang}
+                  includeDisabled
+                  onChange={(code) => { setLang(code); setCurrentPage(1) }}
+                  className="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-tech-dark text-gray-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-tech-accent focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-700 dark:text-gray-300">排序</span>
                 <select
                   value={sortOrder}
@@ -447,6 +481,24 @@ export default function AdminPagesPage() {
 
         {/* 页面列表 */}
         <div className="bg-white dark:bg-tech-light rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {selectedIds.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 border-b border-gray-200 dark:border-gray-700 bg-violet-50 dark:bg-violet-900/20 px-6 py-3">
+              <span className="text-sm text-gray-700 dark:text-gray-300">已选 {selectedIds.length} 项</span>
+              {lang === 'zh' && (
+                <button
+                  onClick={() => { setSyncIds(selectedIds); setSyncOpen(true); }}
+                  className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
+                >
+                  <Sparkles className="w-4 h-4 mr-1" />批量 AI 同步
+                </button>
+              )}
+              <button onClick={handleBatchDelete} className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors">
+                <Trash2 className="w-4 h-4 mr-1" />批量删除
+              </button>
+              <button onClick={clearSelection} className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700">取消选择</button>
+            </div>
+          )}
+          <AiSyncModal open={syncOpen} onClose={() => setSyncOpen(false)} type="page" ids={syncIds} onDone={() => { clearSelection(); fetchPages(); }} />
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tech-accent"></div>
@@ -462,7 +514,7 @@ export default function AdminPagesPage() {
               </p>
               <Link
                 href="/admin/pages/create"
-                className="btn-primary"
+                className="inline-flex items-center whitespace-nowrap btn-primary"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 创建页面
@@ -472,13 +524,16 @@ export default function AdminPagesPage() {
             <>
               {/* 表头 */}
               <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-3">
-                <div className="hidden md:grid grid-cols-[3fr_1fr_3fr_1fr_1fr_3fr] gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <div className="hidden md:grid grid-cols-[36px_3fr_1fr_3fr_1fr_1fr_2.5fr] gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <div>
+                    <input type="checkbox" checked={pages.length > 0 && selectedIds.length === pages.length} onChange={toggleSelectAll} className="rounded" />
+                  </div>
                   <div>标题</div>
                   <div>状态</div>
                   <div>页面标签</div>
                   <div>创建人</div>
                   <div>更新时间</div>
-                  <div className="text-right">操作</div>
+                  <div className="text-left">操作</div>
                 </div>
                 <div className="md:hidden text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   页面列表
@@ -497,7 +552,11 @@ export default function AdminPagesPage() {
                       transition={{ delay: index * 0.05 }}
                       className="px-6 py-4 hover:bg-gray-200/50 transition-colors"
                     >
-                      <div className="grid gap-4 items-start md:items-center md:grid-cols-[3fr_1fr_3fr_1fr_1fr_3fr]">
+                      <div className="grid gap-4 items-start md:items-center md:grid-cols-[36px_3fr_1fr_3fr_1fr_1fr_2.5fr]">
+                        {/* 选择 */}
+                        <div>
+                          <input type="checkbox" checked={selectedIds.includes(String(page.id))} onChange={() => toggleSelect(String(page.id))} className="rounded" />
+                        </div>
                         {/* 标题 */}
                         <div>
                           <div className="flex items-start space-x-3">
@@ -612,31 +671,41 @@ export default function AdminPagesPage() {
 
                         {/* 操作 */}
                         <div>
-                          <div className="flex flex-wrap gap-2 justify-end md:justify-start">
-                            {page.published && (
+                          <div className="flex items-center justify-start gap-1 flex-wrap">
+                            {page.published ? (
                               <Link
-                                href={`/pages/${page.slug}`}
+                                href={(page as any).lang && (page as any).lang !== 'zh' ? `/${(page as any).lang}/pages/${page.slug}` : `/pages/${page.slug}`}
                                 target="_blank"
-                                className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                title="预览"
+                                className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-100 transition-colors"
                               >
-                                <ExternalLink className="w-4 h-4 mr-1" />
-                                预览
+                                <Eye className="w-4 h-4" />
                               </Link>
-                            )}
+                            ) : null}
                             <Link
                               href={`/admin/pages/${page.id}/edit-published-visual`}
-                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                              title="可视化编辑"
+                              className="p-2 rounded-lg text-indigo-600 hover:bg-indigo-100 transition-colors"
                             >
-                              <Eye className="w-4 h-4 mr-1" />
-                              可视化编辑
+                              <ExternalLink className="w-4 h-4" />
                             </Link>
-                            
+
+                            {lang === 'zh' && (
+                              <button
+                                onClick={() => { setSyncIds([String(page.id)]); setSyncOpen(true); }}
+                                title="AI 同步"
+                                className="p-2 rounded-lg text-violet-600 hover:bg-violet-100 transition-colors"
+                              >
+                                <Sparkles className="w-4 h-4" />
+                              </button>
+                            )}
+
                             <button
                               onClick={() => handleDelete(page.id)}
-                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors"
+                              title="删除"
+                              className="p-2 rounded-lg text-rose-600 hover:bg-rose-100 transition-colors"
                             >
-                              <Trash2 className="w-4 h-4 mr-1" />
-                              删除
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </div>

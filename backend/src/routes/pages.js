@@ -10,6 +10,7 @@ const {
   validateSlug
 } = require('../middleware/validation')
 const { parseTemplateData, generateHtmlFromComponents } = require('../utils/pageContent')
+const { resolveLang } = require('../utils/resolveLang')
 
 // Helpers
 const normalizeSlug = (title, slug) => {
@@ -57,15 +58,17 @@ router.get('/', validatePagination, async (req, res) => {
     const pageNum = parseInt(page)
     const limitNum = parseInt(limit)
     const offset = (pageNum - 1) * limitNum
+    const lang = resolveLang(req.query.lang)
 
     let whereClause = ''
     let searchParams = []
 
     if (!req.headers.authorization) {
-      whereClause = 'WHERE published = true'
+      whereClause = 'WHERE published = true AND pages.lang = ?'
     } else {
-      whereClause = 'WHERE 1=1'
+      whereClause = 'WHERE 1=1 AND pages.lang = ?'
     }
+    searchParams.push(lang)
 
     if (search) {
       whereClause += ' AND (title LIKE ? OR content LIKE ?)'
@@ -275,17 +278,18 @@ router.get('/:id', validateId, async (req, res) => {
 router.get('/slug/:slug', validateSlug, async (req, res) => {
   try {
     const { slug } = req.params
+    const lang = resolveLang(req.query.lang)
 
     const [pages] = await db.execute(
       `
-      SELECT 
+      SELECT
         p.*,
         u.username as created_by_name
       FROM pages p
       LEFT JOIN users u ON p.created_by = u.id
-      WHERE p.slug = ?
+      WHERE p.slug = ? AND p.lang = ?
     `,
-      [slug]
+      [slug, lang]
     )
 
     if (pages.length === 0) {
@@ -346,6 +350,7 @@ router.post('/',
   async (req, res) => {
     try {
       const pageData = { ...req.body, created_by: req.user.id }
+      pageData.lang = resolveLang(pageData.lang)
       const parsedTemplateData = parseTemplateData(pageData.template_data)
       const contentFromTemplate = (!pageData.content || pageData.content.trim() === '') && parsedTemplateData?.components
         ? generateHtmlFromComponents(parsedTemplateData.components)
@@ -354,7 +359,7 @@ router.post('/',
 
       const pageSlug = normalizeSlug(pageData.title, pageData.slug)
 
-      const [existingPages] = await db.execute('SELECT id FROM pages WHERE slug = ?', [pageSlug])
+      const [existingPages] = await db.execute('SELECT id FROM pages WHERE slug = ? AND lang = ?', [pageSlug, pageData.lang])
       if (existingPages.length > 0) {
         return res.status(400).json({
           success: false,
@@ -365,13 +370,14 @@ router.post('/',
       const [result] = await db.execute(
         `
         INSERT INTO pages (
-          title, slug, content, excerpt, featured_image,
+          title, slug, lang, content, excerpt, featured_image,
           meta_title, meta_description, published, sort_order, template_data, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
         [
           pageData.title,
           pageSlug,
+          pageData.lang,
           contentFromTemplate,
           pageData.excerpt || null,
           pageData.featured_image || null,
@@ -458,13 +464,14 @@ router.put('/:id',
       const updates = []
       const values = []
 
-      const [existingPages] = await db.execute('SELECT id FROM pages WHERE id = ?', [id])
+      const [existingPages] = await db.execute('SELECT id, lang FROM pages WHERE id = ?', [id])
       if (existingPages.length === 0) {
         return res.status(404).json({
           success: false,
           message: '页面不存在'
         })
       }
+      const existingLang = existingPages[0].lang || 'zh'
 
       const parsedTemplateData = parseTemplateData(req.body.template_data)
       if (parsedTemplateData && (!req.body.content || req.body.content.trim() === '')) {
@@ -512,7 +519,7 @@ router.put('/:id',
         if (req.body.title === '首页' && slugToCheck === '/') {
           slugToCheck = 'home'
         }
-        const [conflictPages] = await db.execute('SELECT id FROM pages WHERE slug = ? AND id != ?', [slugToCheck, id])
+        const [conflictPages] = await db.execute('SELECT id FROM pages WHERE slug = ? AND lang = ? AND id != ?', [slugToCheck, existingLang, id])
         if (conflictPages.length > 0) {
           return res.status(400).json({
             success: false,

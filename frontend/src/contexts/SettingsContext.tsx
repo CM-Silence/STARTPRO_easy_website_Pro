@@ -3,6 +3,7 @@ import { settingsApi } from '@/utils/api'
 import type { Settings } from '@/types'
 import { setCustomThemePalette } from '@/styles/themes'
 import { getDefaultFooterLayout, getDefaultFooterSocialLinks } from '@/constants/footerDefaults'
+import { useLocale } from '@/i18n/LocaleProvider'
 
 interface SettingsContextType {
   settings: Settings | null
@@ -31,11 +32,12 @@ interface SettingsProviderProps {
 export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) => {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const { locale } = useLocale()
 
   const fetchSettings = async () => {
     try {
       setIsLoading(true)
-      const response = await settingsApi.get()
+      const response = await settingsApi.get(locale)
 
       if (response.success) {
         const { site_record: _removedRecord, nav_layout_style: _removedLayout, theme_overrides: _removedOverrides, ...rest } =
@@ -150,7 +152,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
 
   useEffect(() => {
     fetchSettings()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale])
 
   return (
     <SettingsContext.Provider

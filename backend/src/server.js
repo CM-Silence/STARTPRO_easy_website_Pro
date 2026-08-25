@@ -145,6 +145,7 @@ const contactRoutes = require('./routes/contact')
 const docsRoutes = require('./routes/docs')
 const aiRoutes = require('./routes/ai')
 const newsRoutes = require('./routes/news')
+const languagesRoutes = require('./routes/languages')
 
 normalizeSystemDefaultSvgs()
   .then(summary => {
@@ -169,6 +170,7 @@ app.use('/api/contact', contactRoutes)
 app.use('/api/docs', docsRoutes)
 app.use('/api/ai', aiRoutes)
 app.use('/api/news', newsRoutes)
+app.use('/api/languages', languagesRoutes)
 
 // 健康检查端点
 app.get('/api/health', (req, res) => {

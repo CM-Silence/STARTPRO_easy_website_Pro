@@ -1,23 +1,29 @@
 ﻿import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
+import { useTranslation } from 'react-i18next'
 import { pagesApi } from '@/utils/api'
-
-const features = [
-  { title: '语义化色板', description: '面板、标签、边框等元素全部映射到统一的语义 token，浅色主题也能保持层次。' },
-  { title: '多维强度控制', description: '通过阴影、描边和发光强度，让视觉重点在不同主题下自动调节。' },
-  { title: '可调节参数', description: '支持调节饱和度、亮度、圆角与阴影深度，快速贴合品牌审美。' }
-]
+import { useLocale } from '@/i18n/LocaleProvider'
 
 export default function HomePage() {
   const router = useRouter()
+  const { t } = useTranslation('common')
+  const { locale, localize } = useLocale()
   const [loading, setLoading] = useState(true)
+
+  const features = [
+    { title: t('home.feature1Title'), description: t('home.feature1Desc') },
+    { title: t('home.feature2Title'), description: t('home.feature2Desc') },
+    { title: t('home.feature3Title'), description: t('home.feature3Desc') }
+  ]
 
   useEffect(() => {
     const redirectToFrontPage = async () => {
       try {
-        const response = await pagesApi.getBySlug('home')
+        const lang = locale
+        const response = await pagesApi.getBySlug('home', lang)
         if (response.success && response.data.published) {
-          router.replace('/pages/home')
+          // 中文落 /pages/home，其它语言落 /<suffix>/pages/home
+          router.replace(localize('/pages/home'))
         } else {
           setLoading(false)
         }
@@ -28,7 +34,7 @@ export default function HomePage() {
     }
 
     redirectToFrontPage()
-  }, [router])
+  }, [router, locale, localize])
 
   if (loading) {
     return (
@@ -51,15 +57,15 @@ export default function HomePage() {
       <div className="relative max-w-6xl mx-auto px-6 py-24 lg:py-32">
         <div className="text-center space-y-8">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] rounded-full border border-semantic-panelBorder/70 bg-semantic-panel/60 text-theme-textSecondary backdrop-blur">
-            欢迎使用新一代主题系统
+            {t('home.welcome')}
           </span>
 
           <h1 className="text-4xl md:text-6xl font-bold leading-tight text-theme-text">
-            打造具有语义层和自适应强度的企业官网
+            {t('home.subtitle')}
           </h1>
 
           <p className="text-lg md:text-xl text-theme-textSecondary max-w-3xl mx-auto">
-            我们预设了深浅两系 8 套主题，可通过语义 token 和强度调控让浅色主题同样立体；如果需要更多个性化效果，还可以通过主题参数面板随时微调。
+            {t('home.intro')}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -71,13 +77,13 @@ export default function HomePage() {
                 color: 'var(--semantic-cta-primary-text)'
               }}
             >
-              进入管理后台
+              {t('home.enterAdmin')}
             </a>
             <a
               href="/admin/pages"
               className="px-8 py-3 rounded-full font-semibold text-sm tracking-wide border border-semantic-cta-secondary-border text-theme-text hover:bg-semantic-mutedBg/70 transition-colors"
             >
-              前往页面管理
+              {t('home.goPageManager')}
             </a>
           </div>
         </div>

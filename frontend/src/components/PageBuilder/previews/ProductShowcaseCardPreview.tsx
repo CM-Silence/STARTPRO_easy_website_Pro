@@ -3,8 +3,10 @@ import { motion } from 'framer-motion'
 import { TemplateComponent } from '@/types/templates'
 import { HoverFX } from '@/components/motion'
 import { grabMotionSettings, getHoverTransition } from '@/styles/motion-presets'
+import { useTranslation } from 'react-i18next'
 
 export const ProductShowcaseCardPreview: React.FC<{ component: TemplateComponent }> = ({ component }) => {
+  const { t } = useTranslation('common')
   const {
     alignment = 'center',
     cardsPerRow = 1,
@@ -209,7 +211,7 @@ export const ProductShowcaseCardPreview: React.FC<{ component: TemplateComponent
                       />
                     ) : (
                       <div className="w-full h-full border border-dashed border-theme-divider bg-theme-surfaceAlt flex items-center justify-center text-theme-textSecondary">
-                        暂无产品图片
+                        {t('ui.noImage')}
                       </div>
                     )}
                   </div>
