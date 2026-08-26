@@ -1,6 +1,6 @@
-# STARTPRO easy-website
+# STARTPRO easy-website Pro
 
-> 由 STARTPRO 开发的一体化企业官网 CMS。本版本在此之上新增了**多语言（i18n）**与**AI 多语言内容生成/同步**能力，并把 `init.sql` 收敛为「纯建表 + 幂等迁移」，旧库运行一次即可对齐新配置而不改动数据。
+> 由 STARTPRO 开发的一体化企业官网 CMS。Pro版本在此之上新增了**多语言（i18n）**与**AI 多语言内容生成/同步**能力，并把 `init.sql` 收敛为「纯建表 + 幂等迁移」，旧库运行一次即可对齐新配置而不改动数据。
 
 一体化企业站/官网 CMS，提供可视化拖拽建站、赛博风模板、媒体管理、联系表单和通知中心，并支持**多语言前台 + AI 辅助多语言内容**。面向运营/市场/设计同学，后台直接拖组件、改文案、上传图片，即可发布官网；需要中英等多语言时，可让 AI 一键把中文页面/设置/新闻翻译生成对应语言版本。
 
@@ -65,6 +65,19 @@ cd frontend && npm run build && npm start
 
 生产可用 pm2 守护两个进程（3001 前端 / 3003 后端）。
 
+### 登录后台
+打开 `http://localhost:3000/admin/login` ，默认账户如下：
+
+账号：admin
+
+密码：admin123
+
+### 访问普通页面
+
+打开 `http://localhost:3000` ，直接访问自己创建的页面（首页）。
+
+注意，创建首页的URL必须是/pages/home，否则无法正常打开。
+
 ### 多语言与 AI 使用路径
 
 1. 登录后台：`http://localhost:3001/admin/login`（自行创建的管理员）。
@@ -92,4 +105,5 @@ cd frontend && npm run build && npm start
 
 ## 技术支持
 
-由 STARTPRO 开发维护。企业官网： https://www.startpro.com.cn
+原始版本由 STARTPRO 开发维护。企业官网： https://www.startpro.com.cn
+Pro版本由 CM-Silence 更改。项目效果：https://www.powerbelltech.com/pages/home
