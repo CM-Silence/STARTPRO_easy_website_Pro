@@ -66,7 +66,7 @@ cd frontend && npm run build && npm start
 生产可用 pm2 守护两个进程（3001 前端 / 3003 后端）。
 
 ### 登录后台
-打开 `http://localhost:3000/admin/login` ，默认账户如下：
+打开 `http://localhost:3001/admin/login` ，默认账户如下：
 
 账号：admin
 
@@ -74,7 +74,7 @@ cd frontend && npm run build && npm start
 
 ### 访问普通页面
 
-打开 `http://localhost:3000` ，直接访问自己创建的页面（首页）。
+打开 `http://localhost:3001` ，直接访问自己创建的页面（首页）。
 
 注意，创建首页的URL必须是/pages/home，否则无法正常打开。
 
