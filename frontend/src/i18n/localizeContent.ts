@@ -39,6 +39,9 @@ export function applyLinkPrefix(components: unknown, suffix: string): unknown {
     for (const [key, val] of Object.entries(props || {})) {
       if (typeof val === 'string' && isInternalLink(val) && !val.startsWith(`/${suffix}/`)) {
         out[key] = withPrefix(val)
+      } else if (typeof val === 'string') {
+        // 普通字符串：若为 HTML（rich-text/raw-html 的 content），前缀其中 `<a href>`/`<img src>` 站内链接
+        out[key] = prefixHtmlInternalLinks(val, suffix)
       } else if (Array.isArray(val)) {
         out[key] = val.map((item) => {
           if (item && typeof item === 'object') return walk(item as Record<string, unknown>)
@@ -67,4 +70,14 @@ export function localizePath(rest: string, suffix: string): string {
   if (!rest || !suffix || typeof rest !== 'string') return rest
   if (rest === '/') return `/${suffix}`
   return `/${suffix}${rest.startsWith('/') ? rest : `/${rest}`}`
+}
+
+/** 给 HTML 字符串里 `<a href="/…">`/`<img src="/…">` 等站内链接补语言前缀；静态资源/锚点/协议相对保持。 */
+export function prefixHtmlInternalLinks(html: string, suffix: string): string {
+  if (!suffix || typeof html !== 'string') return html
+  return html.replace(/((?:href|src)=")(\/[^"\s]*)/g, (_m, pre, path: string) => {
+    if (path.startsWith('//') || STATIC_PREFIXES.test(path) || path.startsWith(`/${suffix}`)) return _m
+    if (isInternalLink(path)) return `${pre}/${suffix}${path}`
+    return _m
+  })
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { useReducedMotion } from 'framer-motion'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useLocale } from '@/i18n/LocaleProvider'
 import { registerTransitionNavigator } from '@/lib/transitionNavigation'
 
 const CURTAIN_EASE = 'cubic-bezier(0.76, 0, 0.24, 1)'
@@ -23,6 +24,7 @@ export function Cover({ enabled }: { enabled: boolean }) {
   const router = useRouter()
   const reduceMotion = useReducedMotion()
   const { settings } = useSettings()
+  const { suffix } = useLocale()
   const curtainRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
   const armed = useRef(false)       // 首屏结束即永久开启，此后导航可用幕布
@@ -158,14 +160,20 @@ export function Cover({ enabled }: { enabled: boolean }) {
       if (!armed.current || active.current) return // 首屏期间或已有切换进行中，走默认行为
       const el = (e.target as HTMLElement)?.closest?.('a[href]')
       if (!el) return
-      const href = el.getAttribute('href') || ''
-      if (!href || href.startsWith('#')) return
+      const raw = el.getAttribute('href') || ''
+      if (!raw || raw.startsWith('#')) return
       if (el.getAttribute('target') === '_blank' || el.hasAttribute('download')) return
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return
-      const isInternal = href.startsWith('/') || href.startsWith(`${window.location.origin}/`)
-      if (!isInternal) return
-      // 后台/登录不拦截
+      // 归一到站内路径（同源绝对 → 路径）
+      let href = raw
+      if (href.startsWith(`${window.location.origin}/`)) href = href.slice(window.location.origin.length)
+      if (!href.startsWith('/') || href.startsWith('//')) return
+      // 后台/登录不加前缀也不拦
       if (href.startsWith('/admin') || href.startsWith('/login')) return
+      // 多语言统一入口：内部站内路径（非静态/API、未带当前前缀）补语言前缀 —— 覆盖所有组件渲染出的链接
+      if (suffix && !href.startsWith(`/${suffix}`) && !/^\/(uploads|system-default|_next|api|ck-umd|favicon|images\/)/.test(href)) {
+        href = `/${suffix}${href}`
+      }
       e.preventDefault()
       fireNav(href)
     }
@@ -198,7 +206,7 @@ export function Cover({ enabled }: { enabled: boolean }) {
       unregisterNav()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, router, reduceMotion])
+  }, [enabled, router, reduceMotion, suffix])
 
   const brand = useMemo(() => {
     const raw = ((settings as any)?.transition_main_title as string) || (settings?.site_name as string) || ''

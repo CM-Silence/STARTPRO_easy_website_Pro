@@ -6,7 +6,7 @@ import Layout from '@/components/Layout'
 import { motion, MotionConfig, useReducedMotion } from 'framer-motion'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useLocale } from '@/i18n/LocaleProvider'
-import { applyLinkPrefix, localeToSuffix } from '@/i18n/localizeContent'
+import { applyLinkPrefix, localeToSuffix, prefixHtmlInternalLinks } from '@/i18n/localizeContent'
 import { Share2, Eye } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { pagesApi } from '@/utils/api'
@@ -70,6 +70,9 @@ export default function DynamicPage({ initialPage, initialError, initialSettings
           pageData.template_data = {
             ...(pageData.template_data || {}),
             components: applyLinkPrefix((pageData.template_data as any)?.components, suffix)
+          }
+          if (pageData.content && typeof pageData.content === 'string') {
+            pageData.content = prefixHtmlInternalLinks(pageData.content, suffix)
           }
           setPage(pageData)
         } else {
@@ -348,6 +351,9 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         ...pageData.template_data,
         components: applyLinkPrefix((pageData.template_data as any)?.components, suffixSsr)
       }
+    }
+    if (pageData.content && typeof pageData.content === 'string') {
+      pageData.content = prefixHtmlInternalLinks(pageData.content, suffixSsr)
     }
 
     return {
