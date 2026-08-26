@@ -447,5 +447,30 @@ export const DEFAULT_TEMPLATES: AiTemplate[] = [
     output_schema: { title: 'string', description: 'string' },
     is_default: 1,
     enabled: 1
+  },
+  {
+    component_type: '__translate__',
+    template_name: 'AI 多语言翻译',
+    template_type: 'translate',
+    prompt_template:
+      '你是企业官网多语言翻译编辑，把下面的中文页面内容翻译成「{{lang_name}}」（语言代码 {{lang}}）。\n' +
+      '要求：\n' +
+      '1. 术语/专有名词保持一致性{{terms}}' +
+      '2. 产品名规则：MGS- 开头的字符串（如 MGS-104、MGS-108、MGS-200）是产品型号，数字和字母原样保留、不得改动；\n' +
+      '   「标准版/专业版/基础版」等后缀不用翻译“版”，跟在型号后即可，例如“MGS-104 标准版”应输出为 “MGS-104 Standard”、“MGS-108 专业版”输出为 “MGS-108 Pro”。\n' +
+      '3. 符合目标语言的网页写作习惯，不要逐字直译；要简洁、地道、面向用户。导航项/栏目标题尽量用简短英文词，例如“产品中心”译为 “Product” 即可，不要译成 “Product Center”。\n' +
+      '4. 严格保持 JSON 结构、键名、字段类型不变；仅翻译面向用户的文字内容。\n' +
+      '5. 以下一律原样保留、不得改动：所有 URL、图片路径、图标、颜色、尺寸、枚举值、数字、布尔值、日期、排序、id、type、链接、以及 HTML/Markdown 标记。\n' +
+      '只输出合法 JSON，不要 markdown 代码围栏。\n\n' +
+      '源数据：\n{{data}}',
+    output_schema: {
+      title: 'string',
+      excerpt: 'string',
+      meta_title: 'string',
+      meta_description: 'string',
+      components: [{ id: 'string', type: 'string', props: 'object' }]
+    },
+    is_default: 1,
+    enabled: 1
   }
 ]

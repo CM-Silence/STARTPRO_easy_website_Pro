@@ -1,6 +1,7 @@
 const express = require('express')
 const db = require('../config/database')
 const { authenticateToken, requireAdmin, requireEditor, logActivity } = require('../middleware/auth')
+const { validateId } = require('../middleware/validation')
 const { translateItem } = require('../utils/aiTranslate')
 
 const router = express.Router()
@@ -718,6 +719,65 @@ router.post('/sync-settings', authenticateToken, requireEditor, logActivity('syn
   } catch (error) {
     console.error('AI sync-settings failed:', error)
     res.status(500).json({ success: false, message: error.message || '设置 AI 转换失败' })
+  }
+})
+
+// AI 翻译词条（管理员在「AI 接入」配置；lang 为语言表代码，非中文）
+router.get('/glossary', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT * FROM ai_glossary ORDER BY lang, id')
+    res.json({ success: true, data: rows })
+  } catch (error) {
+    console.error('获取 AI 词条失败', error)
+    res.status(500).json({ success: false, message: '获取 AI 词条失败' })
+  }
+})
+
+router.post('/glossary', authenticateToken, requireAdmin, logActivity('create', 'ai_glossary'), async (req, res) => {
+  try {
+    const from_term = String(req.body?.from_term || '').trim()
+    const to_term = String(req.body?.to_term || '').trim()
+    const lang = String(req.body?.lang || '').trim()
+    const is_enabled = req.body?.is_enabled === false ? 0 : 1
+    if (!from_term || !to_term || !lang) {
+      return res.status(400).json({ success: false, message: 'from_term / to_term / lang 必填' })
+    }
+    const [r] = await db.execute(
+      'INSERT INTO ai_glossary (from_term, to_term, lang, is_enabled) VALUES (?, ?, ?, ?)',
+      [from_term, to_term, lang, is_enabled]
+    )
+    res.status(201).json({ success: true, data: { id: r.insertId, from_term, to_term, lang, is_enabled } })
+  } catch (error) {
+    console.error('新增 AI 词条失败', error)
+    res.status(500).json({ success: false, message: '新增 AI 词条失败' })
+  }
+})
+
+router.put('/glossary/:id', authenticateToken, requireAdmin, validateId, logActivity('update', 'ai_glossary'), async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    const from_term = String(req.body?.from_term ?? '').trim()
+    const to_term = String(req.body?.to_term ?? '').trim()
+    const lang = String(req.body?.lang ?? '').trim()
+    const is_enabled = req.body?.is_enabled === false ? 0 : 1
+    await db.execute(
+      'UPDATE ai_glossary SET from_term = ?, to_term = ?, lang = ?, is_enabled = ? WHERE id = ?',
+      [from_term, to_term, lang, is_enabled, id]
+    )
+    res.json({ success: true })
+  } catch (error) {
+    console.error('更新 AI 词条失败', error)
+    res.status(500).json({ success: false, message: '更新 AI 词条失败' })
+  }
+})
+
+router.delete('/glossary/:id', authenticateToken, requireAdmin, validateId, logActivity('delete', 'ai_glossary'), async (req, res) => {
+  try {
+    await db.execute('DELETE FROM ai_glossary WHERE id = ?', [Number(req.params.id)])
+    res.json({ success: true })
+  } catch (error) {
+    console.error('删除 AI 词条失败', error)
+    res.status(500).json({ success: false, message: '删除 AI 词条失败' })
   }
 })
 

@@ -35,7 +35,7 @@ const en = {
     privacy: 'Privacy Policy',
     terms: 'Terms of Service',
     previewImage: 'preview',
-    brandName: 'Pailink Technology Co., Ltd.',
+    brandName: 'Your Technology Co., Ltd.',
     brandDescription: 'Dedicated to delivering professional digital solutions that empower your business with digital transformation and growth.',
     allRightsReserved: 'All rights reserved.',
   },
@@ -103,10 +103,6 @@ const en = {
   },
   hero: {
     loadImageError: 'Failed to load background image',
-  },
-  transition: {
-    brand: 'Pailink Intelligence',
-    tagline: 'Powering the energy world with intelligent algorithms',
   },
   news: {
     readMore: 'Read more',

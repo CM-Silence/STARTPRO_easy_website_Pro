@@ -610,6 +610,27 @@ INSERT INTO `languages` (`display_name`, `suffix`, `is_enabled`, `is_system`)
 SELECT '中文', '', 1, 1
 WHERE NOT EXISTS (SELECT 1 FROM `languages` WHERE `is_system` = 1);
 
+-- AI 翻译词条表（管理员在「AI 接入」页配置；翻译时按目标语言注入提示词并做兜底替换）
+CREATE TABLE IF NOT EXISTS `ai_glossary` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `from_term` varchar(255) NOT NULL COMMENT '源中文词',
+  `to_term` varchar(255) NOT NULL COMMENT '目标语言译词',
+  `lang` varchar(20) NOT NULL DEFAULT 'en' COMMENT '目标语言代码',
+  `is_enabled` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_glossary_lang` (`lang`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI 翻译词条';
+
+-- 内置「AI 多语言翻译」提示词模板（可在「AI 接入 → 提示词模板」编辑；幂等）
+INSERT INTO `ai_prompt_templates` (`component_type`, `template_name`, `template_type`, `prompt_template`, `output_schema`, `is_default`, `enabled`)
+SELECT '__translate__', 'AI 多语言翻译', 'translate',
+'你是企业官网多语言翻译编辑，把下面的中文页面内容翻译成「{{lang_name}}」（语言代码 {{lang}}）。\n要求：\n1. 术语/专有名词保持一致性{{terms}}2. 产品名规则：MGS- 开头的字符串（如 MGS-104、MGS-108、MGS-200）是产品型号，数字和字母原样保留、不得改动；\n   「标准版/专业版/基础版」等后缀不用翻译“版”，跟在型号后即可，例如“MGS-104 标准版”应输出为 “MGS-104 Standard”、“MGS-108 专业版”输出为 “MGS-108 Pro”。\n3. 符合目标语言的网页写作习惯，不要逐字直译；要简洁、地道、面向用户。导航项/栏目标题尽量用简短英文词，例如“产品中心”译为 “Product” 即可，不要译成 “Product Center”。\n4. 严格保持 JSON 结构、键名、字段类型不变；仅翻译面向用户的文字内容。\n5. 以下一律原样保留、不得改动：所有 URL、图片路径、图标、颜色、尺寸、枚举值、数字、布尔值、日期、排序、id、type、链接、以及 HTML/Markdown 标记。\n只输出合法 JSON，不要 markdown 代码围栏。\n\n源数据：\n{{data}}',
+'{"title":"string","excerpt":"string","meta_title":"string","meta_description":"string","components":[{"id":"string","type":"string","props":"object"}]}',
+1, 1
+WHERE NOT EXISTS (SELECT 1 FROM `ai_prompt_templates` WHERE `component_type` = '__translate__' AND `template_type` = 'translate');
+
 -- 判定某表某列是否已存在
 SET @_lang_pages = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pages' AND COLUMN_NAME='lang');
 SET @_s = IF(@_lang_pages=0, 'ALTER TABLE pages ADD COLUMN `lang` varchar(10) NOT NULL DEFAULT ''zh'' COMMENT ''语言'' AFTER `template_data`', 'SELECT 1');

@@ -104,10 +104,6 @@ const zh = {
   hero: {
     loadImageError: '背景图片加载失败',
   },
-  transition: {
-    brand: '湃联智能',
-    tagline: '让智能算法安全驱动能源世界',
-  },
   news: {
     readMore: '阅读更多',
     loading: '加载新闻中…',

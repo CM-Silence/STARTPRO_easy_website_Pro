@@ -345,6 +345,11 @@ export const aiApi = {
   generate: (data: any) => api.post('/ai/generate', data),
   sync: (data: { type: string; ids: (string | number)[]; targetLangs: string[] }) => api.post('/ai/sync', data, { timeout: 600000 }),
   syncSettings: (data: { targetLangs: string[] }) => api.post('/ai/sync-settings', data, { timeout: 600000 }),
+
+  listGlossary: () => api.get('/ai/glossary'),
+  createGlossary: (data: any) => api.post('/ai/glossary', data),
+  updateGlossary: (id: number | string, data: any) => api.put(`/ai/glossary/${id}`, data),
+  deleteGlossary: (id: number | string) => api.delete(`/ai/glossary/${id}`),
 }
 
 export const docsApi = {

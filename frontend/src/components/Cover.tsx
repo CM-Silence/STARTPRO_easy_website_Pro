@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { useReducedMotion } from 'framer-motion'
 import { useSettings } from '@/contexts/SettingsContext'
-import { useTranslation } from 'react-i18next'
 import { registerTransitionNavigator } from '@/lib/transitionNavigation'
 
 const CURTAIN_EASE = 'cubic-bezier(0.76, 0, 0.24, 1)'
@@ -23,7 +22,6 @@ const TEXT_DELAY = 330
 export function Cover({ enabled }: { enabled: boolean }) {
   const router = useRouter()
   const reduceMotion = useReducedMotion()
-  const { t } = useTranslation('common')
   const { settings } = useSettings()
   const curtainRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLDivElement>(null)
@@ -202,14 +200,11 @@ export function Cover({ enabled }: { enabled: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, router, reduceMotion])
 
-  const brand = useMemo(
-    () =>
-      (((settings as any)?.transition_main_title as string) ||
-        (settings?.site_name as string) ||
-        t('transition.brand')).replace(/™$/, '') + '™',
-    [settings?.site_name, (settings as any)?.transition_main_title, t]
-  )
-  const tagline = (settings as any)?.transition_subtitle || t('transition.tagline')
+  const brand = useMemo(() => {
+    const raw = ((settings as any)?.transition_main_title as string) || (settings?.site_name as string) || ''
+    return raw ? raw.replace(/™$/, '') + '™' : ''
+  }, [settings?.site_name, (settings as any)?.transition_main_title])
+  const tagline = ((settings as any)?.transition_subtitle as string) || ''
   const accent = 'rgba(var(--color-accent-rgb, 0, 212, 255), 1)'
   const primary = 'rgba(var(--color-primary-rgb, 59, 130, 246), 1)'
 

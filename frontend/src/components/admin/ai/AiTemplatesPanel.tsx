@@ -148,7 +148,7 @@ const AiTemplatesPanel = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
           {templates.length === 0 ? (
             <div className="text-sm text-gray-500">暂无模板</div>
           ) : (

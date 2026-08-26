@@ -1,6 +1,7 @@
 // AI 多语言翻译核心：把源语言(中文)内容翻译为指定语言，并做结构安全合并。
 // 规则：仅翻译面向用户的文字字段；URL/图片/图标/颜色/枚举/数字/布尔/日期/排序/id/type/链接一律保留源值。
-const { getReadyProfile, callChatCompletion, parseJsonSafe } = require('./aiProvider')
+const { getReadyProfile, callChatCompletion, parseJsonSafe, interpolateTemplate } = require('./aiProvider')
+const db = require('../config/database')
 
 // 这些 props 键即使出现在 AI 返回中也一律保留源值（结构/枚举/媒体字段）。
 // 注意：不要把用户可见的文字字段（label/title/description/status/date(时间轴)等）放进来——它们应被翻译。
@@ -79,51 +80,68 @@ const buildSrc = {
   settings: (src) => src || {}
 }
 
-// 既有专有名词/品牌术语一致性：出现在正文里的一律用下表英文，不随语境变换
-const GLOSSARY = [
-  ['电湃科技', 'Powerbell Technology'],
-  ['湃联智能', 'Pailink Intelligence'],
-  ['知识库', 'Wiki'],
-  ['标准版', 'Standard'],
-  ['专业版', 'Pro'],
-  ['基础版', 'Basic'],
-  ['旗舰版', 'Ultimate'],
-  ['测试版', 'Beta']
-]
-
-const glossarize = (s) => {
-  let out = s
-  for (const [zh, en] of GLOSSARY) out = out.split(zh).join(en)
-  return out
-}
-
-/** 深层遍历，对字符串字段做术语纠正（URL/图片等非文字字段不受影响——术语均为中文词）。 */
-function applyGlossaryDeep(node) {
-  if (typeof node === 'string') return glossarize(node)
-  if (Array.isArray(node)) return node.map(applyGlossaryDeep)
+// 由 DB 词条（ai_glossary，按目标语言配置）做确定性纠正：先把 `from_term` 替换为 `to_term`。
+function applyGlossaryDeep(node, terms = []) {
+  if (typeof node === 'string') {
+    let out = node
+    for (const t of terms) out = out.split(t.from_term).join(t.to_term)
+    return out
+  }
+  if (Array.isArray(node)) return node.map((n) => applyGlossaryDeep(n, terms))
   if (node && typeof node === 'object') {
     const o = {}
-    for (const [k, v] of Object.entries(node)) o[k] = applyGlossaryDeep(v)
+    for (const [k, v] of Object.entries(node)) o[k] = applyGlossaryDeep(v, terms)
     return o
   }
   return node
 }
 
-const buildPrompt = (type, data, lang) => {
-  const name = targetName(lang)
-  const common =
-    `你是企业官网多语言翻译编辑，把下面的中文页面内容翻译成「${name}」（语言代码 ${lang}）。\n` +
-    `要求：\n` +
-    `1. 品牌与术语一致性，必须使用下面固定的英文，不得改写或意译：\n` +
-    `   电湃科技 = Powerbell Technology；湃联智能 = Pailink Intelligence；知识库 = Wiki。\n` +
-    `2. 产品名规则：MGS- 开头的字符串（如 MGS-104、MGS-108、MGS-200）是产品型号，数字和字母原样保留、不得改动；\n` +
-    `   「标准版/专业版/基础版」等后缀不用翻译“版”，跟在型号后即可，例如“MGS-104 标准版”应输出为 “MGS-104 Standard”、“MGS-108 专业版”输出为 “MGS-108 Pro”。\n` +
-    `3. 符合目标语言的网页写作习惯，不要逐字直译；要简洁、地道、面向用户。导航项/栏目标题尽量用简短英文词，例如“产品中心”译为 “Product” 即可，不要译成 “Product Center”。\n` +
-    `4. 严格保持 JSON 结构、键名、字段类型不变；仅翻译面向用户的文字内容。\n` +
-    `5. 以下一律原样保留、不得改动：所有 URL、图片路径、图标、颜色、尺寸、枚举值、数字、布尔值、日期、排序、id、type、链接、以及 HTML/Markdown 标记。\n` +
-    `只输出合法 JSON，不要 markdown 代码围栏。\n\n` +
-    `源数据：\n`
-  return `${common}${JSON.stringify(data)}`
+// 默认翻译提示词（当 ai_prompt_templates 中 __translate__/translate 模板缺失时的兜底）
+const defaultTranslatePrompt =
+  '你是企业官网多语言翻译编辑，把下面的中文页面内容翻译成「{{lang_name}}」（语言代码 {{lang}}）。\n' +
+  '要求：\n' +
+  '1. 术语/专有名词保持一致性{{terms}}' +
+  '2. 产品名规则：MGS- 开头的字符串（如 MGS-104、MGS-108、MGS-200）是产品型号，数字和字母原样保留、不得改动；\n' +
+  '   「标准版/专业版/基础版」等后缀不用翻译“版”，跟在型号后即可，例如“MGS-104 标准版”应输出为 “MGS-104 Standard”、“MGS-108 专业版”输出为 “MGS-108 Pro”。\n' +
+  '3. 符合目标语言的网页写作习惯，不要逐字直译；要简洁、地道、面向用户。导航项/栏目标题尽量用简短英文词，例如“产品中心”译为 “Product” 即可，不要译成 “Product Center”。\n' +
+  '4. 严格保持 JSON 结构、键名、字段类型不变；仅翻译面向用户的文字内容。\n' +
+  '5. 以下一律原样保留、不得改动：所有 URL、图片路径、图标、颜色、尺寸、枚举值、数字、布尔值、日期、排序、id、type、链接、以及 HTML/Markdown 标记。\n' +
+  '只输出合法 JSON，不要 markdown 代码围栏。\n\n' +
+  '源数据：\n{{data}}'
+
+const termsSection = (terms) =>
+  terms.length
+    ? `，必须使用以下固定映射、不得改写或意译：\n${terms.map((t) => `   ${t.from_term} = ${t.to_term}`).join('\n')}\n`
+    : '，公司名/商标等专有名词沿用通用译法。\n'
+
+// 翻译提示词：优先取 ai_prompt_templates 中的「AI 多语言翻译」模板（可编辑，含输出结构提示可填），缺失回退默认
+async function resolvePrompt(data, lang, terms) {
+  let tmpl = null
+  let schema = null
+  try {
+    const [rows] = await db.execute(
+      "SELECT prompt_template, output_schema FROM ai_prompt_templates WHERE component_type = '__translate__' AND template_type = 'translate' AND enabled = 1 ORDER BY id ASC LIMIT 1"
+    )
+    if (rows.length) {
+      tmpl = rows[0].prompt_template
+      schema = rows[0].output_schema
+    }
+  } catch (e) {
+    tmpl = null
+  }
+  const text = tmpl && typeof tmpl === 'string' ? tmpl : defaultTranslatePrompt
+  const prompt = interpolateTemplate(text, {
+    lang_name: targetName(lang),
+    lang,
+    terms: termsSection(terms),
+    data: JSON.stringify(data)
+  })
+  // 若模板填了「输出结构 JSON」，把它作为输出结构要求附加到提示词（不强制校验，仅作引导）
+  if (schema && String(schema).trim()) {
+    const s = typeof schema === 'object' ? JSON.stringify(schema) : String(schema)
+    return `${prompt}\n\n输出结构要求（保持结构/键名/类型一致）：\n${s}`
+  }
+  return prompt
 }
 
 /**
@@ -135,8 +153,16 @@ async function translateItem({ type, source, targetLang }) {
   const profile = await getReadyProfile()
   if (!profile) throw new Error('AI 未配置或未启用，请先在「AI 接入」配置')
 
+  // 词条按目标语言从数据库读取（管理员在「AI 接入」配置）
+  const [grows] = await db.execute(
+    'SELECT from_term, to_term FROM ai_glossary WHERE lang = ? AND is_enabled = 1',
+    [targetLang]
+  )
+  const terms = grows || []
+  const gloss = (node) => applyGlossaryDeep(node, terms)
+
   const src = buildSrc[type](source)
-  const prompt = buildPrompt(type, src, targetLang)
+  const prompt = await resolvePrompt(src, targetLang, terms)
   const result = await callChatCompletion(profile, prompt)
   const content = result?.choices?.[0]?.message?.content || ''
   const parsed = parseJsonSafe(content.trim())
@@ -156,7 +182,7 @@ async function translateItem({ type, source, targetLang }) {
           props: mergeProps(comp.props || {}, aiComp?.props || {})
         }
       })
-      return applyGlossaryDeep({
+      return gloss({
         type,
         lang,
         slug: source.slug,
@@ -168,22 +194,22 @@ async function translateItem({ type, source, targetLang }) {
       })
     }
     case 'doc':
-      return applyGlossaryDeep({
+      return gloss({
         type, lang, slug: source.slug,
         title: typeof ai.title === 'string' ? ai.title : source.title,
         summary: typeof ai.summary === 'string' ? ai.summary : source.summary || '',
         content: typeof ai.content === 'string' ? ai.content : source.content || ''
       })
     case 'news':
-      return applyGlossaryDeep({
+      return gloss({
         type, lang,
         title: typeof ai.title === 'string' ? ai.title : source.title,
         summary: typeof ai.summary === 'string' ? ai.summary : source.summary || ''
       })
     case 'nav':
-      return applyGlossaryDeep({ type, lang, name: typeof ai.name === 'string' ? ai.name : source.name || '' })
+      return gloss({ type, lang, name: typeof ai.name === 'string' ? ai.name : source.name || '' })
     case 'settings':
-      return applyGlossaryDeep({ type: 'settings', lang, data: mergeProps(source || {}, ai && typeof ai === 'object' ? ai : {}) })
+      return gloss({ type: 'settings', lang, data: mergeProps(source || {}, ai && typeof ai === 'object' ? ai : {}) })
     default:
       throw new Error(`不支持的翻译类型: ${type}`)
   }
