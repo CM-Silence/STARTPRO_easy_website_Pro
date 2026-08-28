@@ -59,11 +59,13 @@ export default function ThemeAwareFooter({
   className = '',
   onThemeChange,
   footerLayout: footerLayoutProp,
-  footerSocialLinks: footerSocialLinksProp
+  footerSocialLinks: footerSocialLinksProp,
+  footerSocialTitle: footerSocialTitleProp
 }: ThemeAwareFooterProps) {
   const { settings } = useSettings()
   const { t } = useTranslation('common')
   const { localize } = useLocale()
+  const socialTitle = footerSocialTitleProp ?? (settings as any)?.footer_social_title ?? t('footer.followUs')
   const hrefOf = (url: string) => (url && url.startsWith('/') && !url.startsWith('//') ? localize(url) : url)
 
   const [isClient, setIsClient] = useState(typeof window !== 'undefined')
@@ -187,7 +189,7 @@ export default function ThemeAwareFooter({
     if (socialLinksToRender.length) {
       next.push({
         id: 'social-section',
-        title: t('footer.followUs'),
+        title: socialTitle,
         description: '',
         links: []
       })
@@ -389,7 +391,7 @@ export default function ThemeAwareFooter({
               <div className="space-y-4 lg:col-span-3">
                 <div className="space-y-3">
                   <h4 className="font-semibold text-sm uppercase tracking-wide" style={{ color: footerStyles.titleColor }}>
-                    {(settings as any)?.footer_social_title || t('footer.followUs')}
+                    {socialTitle}
                   </h4>
                   <div className="flex flex-wrap gap-3">
                     {socialLinksToRender.map(link => {

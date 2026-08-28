@@ -894,7 +894,7 @@ export default function NavigationManagePage() {
             </p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="btn-primary"
+              className="inline-flex items-center whitespace-nowrap btn-primary"
             >
               <Plus className="w-4 h-4 mr-2" />
               添加导航

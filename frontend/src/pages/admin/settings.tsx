@@ -1020,6 +1020,7 @@ export default function AdminSettingsPage() {
                 }}
                 footerLayout={watchedFooterLayout}
                 footerSocialLinks={watchedFooterSocialLinks}
+                footerSocialTitle={watch('footer_social_title')}
               />
             </div>
           </motion.div>

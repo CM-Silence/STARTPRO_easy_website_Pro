@@ -302,6 +302,10 @@ export interface ThemeAwareFooterProps {
    * 社交媒体图标列表
    */
   footerSocialLinks?: FooterSocialLink[]
+  /**
+   * 「关注我们」区块标题（缺省用词典）
+   */
+  footerSocialTitle?: string
   
   /**
    * 自定义类名
