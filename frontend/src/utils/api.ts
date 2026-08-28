@@ -368,6 +368,8 @@ export const newsApi = {
     api.get('/news', { params }) as Promise<PaginatedResponse<News>>,
   latest: (params?: { limit?: number; pinFirst?: boolean; lang?: string }) =>
     api.get('/news/latest', { params }),
+  index: (params?: { page?: number; limit?: number; search?: string; skip?: number; lang?: string }) =>
+    api.get('/news/index', { params }) as Promise<PaginatedResponse<News>>,
   batch: (ids: (string | number)[], lang?: string) => api.get('/news/batch', { params: { ids: ids.join(','), lang } }),
   getById: (id: string | number) => api.get(`/news/id/${id}`),
   getFeatured: (lang?: string) => api.get('/news/latest', { params: { limit: 3, pinFirst: true, lang } }),

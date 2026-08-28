@@ -108,6 +108,13 @@ const en = {
     readMore: 'Read more',
     loading: 'Loading news…',
     noSelection: 'Select news for this card in the editor',
+    indexSearch: 'Search news…',
+    empty: 'No news yet',
+    total: '{{n}} items',
+    prevPage: 'Prev',
+    nextPage: 'Next',
+    pageInfo: '{{page}} / {{total}}',
+    jump: 'Jump',
   },
   language: {
     switchLabel: 'Switch language',

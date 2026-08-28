@@ -46,6 +46,7 @@ export type ComponentType =
   | 'faq-section'
   | 'stats-section'
   | 'news-list'
+  | 'news-index'
   | 'logo-wall'
   | 'logo-scroll'
   | 'image-text'

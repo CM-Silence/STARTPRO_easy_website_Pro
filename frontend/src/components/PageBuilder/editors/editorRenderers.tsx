@@ -463,6 +463,35 @@ const renderHeroEditor: CustomEditorRenderer = ({ component, formData, handleFie
   return <HeroEditor formData={formData} handleFieldChange={handleFieldChange} />
 }
 
+const renderNewsIndexEditor: CustomEditorRenderer = ({ component, formData, handleFieldChange }) => {
+  if (component.type !== 'news-index') return null
+  const input =
+    'w-full px-3 py-2 border border-gray-200 rounded-lg theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent'
+  const set = (k: string, v: any) => handleFieldChange(k, v)
+  return (
+    <div className="space-y-4 mb-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-900 mb-1">标题对齐</label>
+        <select className={input} value={formData.titleAlign || 'left'} onChange={(e) => set('titleAlign', e.target.value)}>
+          <option value="left">靠左</option>
+          <option value="center">居中</option>
+          <option value="right">靠右</option>
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-900 mb-1">每页条数</label>
+          <input type="number" min={1} className={input} value={formData.pageSize || 10} onChange={(e) => set('pageSize', Number(e.target.value) || 10)} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-900 mb-1">屏蔽前 N 条</label>
+          <input type="number" min={0} className={input} value={formData.skipFirst || 0} onChange={(e) => set('skipFirst', Number(e.target.value) || 0)} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const customEditors: Partial<Record<string, CustomEditorRenderer>> = {
   'hero': renderHeroEditor,
   'video-player': renderVideoEditor,
@@ -474,6 +503,7 @@ const customEditors: Partial<Record<string, CustomEditorRenderer>> = {
   'timeline': renderTimelineEditorBlock,
   'cyber-timeline': renderCyberTimelineEditorBlock,
   'news-list': renderNewsListEditor,
+  'news-index': renderNewsIndexEditor,
   'testimonials': renderTestimonialsEditor,
   'link-block': renderLinkBlockEditor,
   'table': renderTableEditor,

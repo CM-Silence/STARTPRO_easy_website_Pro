@@ -14,6 +14,7 @@ import { CyberTimelinePreview } from './CyberTimelinePreview'
 import { CyberShowcasePreview } from './CyberShowcasePreview'
 import { CyberSuperCardPreview } from './CyberSuperCardPreview'
 import { NewsListPreview } from './NewsListPreview'
+import { NewsIndexPreview } from './NewsIndexPreview'
 import { BannerCarouselPreview } from './BannerCarouselPreview'
 import { LogoWallPreview } from './LogoWallPreview'
 import { ImageTextPreview } from './ImageTextPreview'
@@ -43,6 +44,7 @@ export {
   CyberSuperCardPreview,
   TestimonialsPreview,
   NewsListPreview,
+  NewsIndexPreview,
   BannerCarouselPreview,
   LogoWallPreview,
   ImageTextPreview,
@@ -75,6 +77,7 @@ export const componentPreviews = {
   'cyber-super-card': CyberSuperCardPreview,
   'testimonials': TestimonialsPreview,
   'news-list': NewsListPreview,
+  'news-index': NewsIndexPreview,
   'logo-wall': LogoWallPreview,
   'logo-scroll': LogoScrollPreview,
   'image-text': ImageTextPreview,

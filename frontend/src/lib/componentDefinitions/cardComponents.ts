@@ -1,5 +1,5 @@
 import { ComponentDefinition } from '@/types/templates'
-import { FeatureGridLargePreview, FeatureGridPreview, NewsListPreview, PricingCardsPreview, ProductShowcaseCardPreview, StatsSectionPreview, TeamGridPreview, TestimonialsPreview, TimelinePreview } from '@/components/PageBuilder/previews'
+import { FeatureGridLargePreview, FeatureGridPreview, NewsIndexPreview, NewsListPreview, PricingCardsPreview, ProductShowcaseCardPreview, StatsSectionPreview, TeamGridPreview, TestimonialsPreview, TimelinePreview } from '@/components/PageBuilder/previews'
 
 export const cardComponents: ComponentDefinition[] = [
   {
@@ -385,7 +385,7 @@ export const cardComponents: ComponentDefinition[] = [
 
   {
       type: 'news-list',
-      name: '新闻列表',
+      name: '新闻卡片',
       description: '展示最新的新闻和动态',
       icon: '📰',
       category: '卡片组件',
@@ -437,5 +437,23 @@ export const cardComponents: ComponentDefinition[] = [
         ] }
       ],
       previewComponent: NewsListPreview
-    }
+    },
+  {
+    type: 'news-index',
+    name: '新闻列表',
+    description: '行式新闻列表：搜索、分页、置顶与日期排序，可屏蔽前 N 条。',
+    icon: '📰',
+    category: '卡片组件',
+    defaultProps: {
+      title: '',
+      subtitle: '',
+      titleAlign: 'left',
+      pageSize: 10,
+      skipFirst: 0,
+      widthOption: 'full',
+      backgroundColorOption: 'default'
+    },
+    editableFields: [],
+    previewComponent: NewsIndexPreview
+  }
 ]

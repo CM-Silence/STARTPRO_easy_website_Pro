@@ -100,6 +100,51 @@ router.get('/latest', async (req, res) => {
   }
 })
 
+// 公开分页列表（前端「新闻列表」组件用）：已发布、按语言、搜索、置顶→日期排序、屏蔽前 N 条、翻页
+router.get('/index', async (req, res) => {
+  try {
+    const lang = resolveLang(req.query.lang)
+    const page = Math.max(parseInt(req.query.page) || 1, 1)
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 100)
+    const skip = Math.max(parseInt(req.query.skip) || 0, 0)
+    const search = (req.query.search || '').trim()
+
+    let where = 'WHERE published = 1 AND lang = ?'
+    const params = [lang]
+    if (search) {
+      where += ' AND (title LIKE ? OR summary LIKE ?)'
+      params.push(`%${search}%`, `%${search}%`)
+    }
+
+    const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM news ${where}`, params)
+    const offset = (page - 1) * limit + skip
+
+    const [rows] = await db.execute(
+      `SELECT id, title, DATE_FORMAT(date, "%Y-%m-%d") AS date, summary, link, image, pinned, published, created_at, updated_at
+       FROM news ${where}
+       ORDER BY pinned DESC, date DESC, created_at DESC, id DESC
+       LIMIT ${limit} OFFSET ${offset}`,
+      params
+    )
+
+    res.json({
+      success: true,
+      data: rows,
+      meta: {
+        current_page: page,
+        per_page: limit,
+        total,
+        total_pages: Math.ceil(total / limit) || 1,
+        has_next: page * limit < total,
+        has_prev: page > 1
+      }
+    })
+  } catch (error) {
+    console.error('获取新闻分页列表失败:', error)
+    res.status(500).json({ success: false, message: '获取新闻列表失败' })
+  }
+})
+
 // 自定义模式：按 id 批量取
 router.get('/batch', async (req, res) => {
   try {

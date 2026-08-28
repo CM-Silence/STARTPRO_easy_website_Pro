@@ -108,6 +108,13 @@ const zh = {
     readMore: '阅读更多',
     loading: '加载新闻中…',
     noSelection: '请在编辑器中为新闻卡片选择新闻',
+    indexSearch: '搜索新闻标题…',
+    empty: '暂无新闻',
+    total: '共 {{n}} 条',
+    prevPage: '上一页',
+    nextPage: '下一页',
+    pageInfo: '{{page}} / {{total}}',
+    jump: '跳转',
   },
   language: {
     switchLabel: '切换语言',
