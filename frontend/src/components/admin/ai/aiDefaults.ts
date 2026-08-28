@@ -463,13 +463,6 @@ export const DEFAULT_TEMPLATES: AiTemplate[] = [
       '5. 以下一律原样保留、不得改动：所有 URL、图片路径、图标、颜色、尺寸、枚举值、数字、布尔值、日期、排序、id、type、链接、以及 HTML/Markdown 标记。\n' +
       '只输出合法 JSON，不要 markdown 代码围栏。\n\n' +
       '源数据：\n{{data}}',
-    output_schema: {
-      title: 'string',
-      excerpt: 'string',
-      meta_title: 'string',
-      meta_description: 'string',
-      components: [{ id: 'string', type: 'string', props: 'object' }]
-    },
     is_default: 1,
     enabled: 1
   }
