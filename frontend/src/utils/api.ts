@@ -209,7 +209,7 @@ export const navigationApi = {
 }
 
 export const settingsApi = {
-  get: (lang?: string) => api.get('/settings', { params: { lang } }),
+  get: (lang?: string, withSync?: boolean) => api.get('/settings', { params: { lang, withSync: withSync ? '1' : undefined } }),
 
   update: (data: any) => api.put('/settings', data),
 }

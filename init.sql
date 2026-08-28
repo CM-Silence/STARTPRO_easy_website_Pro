@@ -710,3 +710,13 @@ SET @_s = IF(@_has_nav_src=0, 'ALTER TABLE navigation ADD COLUMN `source_id` int
 PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
 SET @_s = IF((SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='navigation' AND INDEX_NAME='idx_nav_source')=0, 'ALTER TABLE navigation ADD KEY `idx_nav_source` (`lang`, `source_id`)', 'SELECT 1');
 PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------- 同步状态 is_synced（中文源项：AI 已同步到所有语言=1；编辑后复位为 0） ----------
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pages' AND COLUMN_NAME='is_synced')=0, 'ALTER TABLE pages ADD COLUMN `is_synced` tinyint(1) NOT NULL DEFAULT 0 COMMENT ''AI同步到所有语言'' AFTER `lang`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='news' AND COLUMN_NAME='is_synced')=0, 'ALTER TABLE news ADD COLUMN `is_synced` tinyint(1) NOT NULL DEFAULT 0 COMMENT ''AI同步到所有语言'' AFTER `source_id`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='navigation' AND COLUMN_NAME='is_synced')=0, 'ALTER TABLE navigation ADD COLUMN `is_synced` tinyint(1) NOT NULL DEFAULT 0 COMMENT ''AI同步到所有语言'' AFTER `source_id`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='docs' AND COLUMN_NAME='is_synced')=0, 'ALTER TABLE docs ADD COLUMN `is_synced` tinyint(1) NOT NULL DEFAULT 0 COMMENT ''AI同步到所有语言'' AFTER `lang`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;

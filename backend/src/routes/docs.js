@@ -10,6 +10,7 @@ const {
   validateDocSlugPath
 } = require('../middleware/validation')
 const { resolveLang } = require('../utils/resolveLang')
+const { computeMissing } = require('../utils/syncStatus')
 
 const normalizeSlug = (slug) => {
   if (!slug || typeof slug !== 'string') return ''
@@ -38,12 +39,31 @@ router.get('/tree', async (req, res) => {
   try {
     const lang = resolveLang(req.query.lang)
     const [docs] = await db.execute(
-      `SELECT id, title, slug, parent_id, sort_order, status, type
+      `SELECT id, title, slug, parent_id, sort_order, status, type, is_synced
        FROM docs
        WHERE lang = ?
        ORDER BY parent_id ASC, sort_order ASC, id ASC`,
       [lang]
     )
+
+    if (lang === 'zh' && docs.length) {
+      try {
+        const missing = await computeMissing({ table: 'docs', by: 'slug', ids: docs.map((d) => d.id) })
+        const attach = (nodes) => {
+          nodes.forEach((n) => {
+            const miss = missing.get(String(n.id)) || []
+            n.syncStatus = { missing: miss, synced: miss.length === 0 }
+            if (n.children && n.children.length) attach(n.children)
+          })
+        }
+        const tree = buildTree(docs)
+        attach(tree)
+        return res.json({ success: true, data: tree })
+      } catch (e) {
+        console.error('计算文档同步状态失败', e)
+      }
+    }
+
     res.json({ success: true, data: buildTree(docs) })
   } catch (error) {
     console.error('get docs tree failed', error)
@@ -348,7 +368,7 @@ router.put(
       updates.push('updated_at = NOW()')
       values.push(id)
 
-      await db.execute(`UPDATE docs SET ${updates.join(', ')} WHERE id = ?`, values)
+      await db.execute(`UPDATE docs SET ${updates.join(', ')}, is_synced = 0 WHERE id = ?`, values)
 
       res.json({ success: true, message: '文档更新成功' })
     } catch (error) {

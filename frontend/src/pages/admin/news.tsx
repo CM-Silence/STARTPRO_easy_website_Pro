@@ -5,6 +5,7 @@ import { newsApi } from '@/utils/api'
 import AssetPickerModal from '@/components/AssetPickerModal'
 import LanguageSelect from '@/components/admin/LanguageSelect'
 import AiSyncModal from '@/components/admin/AiSyncModal'
+import SyncStatusBadge from '@/components/admin/SyncStatusBadge'
 import type { News } from '@/types'
 import toast from 'react-hot-toast'
 
@@ -256,14 +257,15 @@ export default function AdminNewsPage() {
                 <th className="px-4 py-3 font-medium">图片</th>
                 <th className="px-4 py-3 font-medium">置顶</th>
                 <th className="px-4 py-3 font-medium">发布</th>
+                {lang === 'zh' && <th className="px-4 py-3 font-medium">同步状态</th>}
                 <th className="px-4 py-3 font-medium">操作</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">加载中…</td></tr>
+                <tr><td colSpan={lang === 'zh' ? 10 : 9} className="px-4 py-8 text-center text-gray-500">加载中…</td></tr>
               ) : list.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-500">暂无新闻</td></tr>
+                <tr><td colSpan={lang === 'zh' ? 10 : 9} className="px-4 py-8 text-center text-gray-500">暂无新闻</td></tr>
               ) : (
                 list.map((n) => (
                   <tr key={n.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
@@ -281,6 +283,9 @@ export default function AdminNewsPage() {
                     <td className="px-4 py-3">
                       <input type="checkbox" readOnly checked={n.published !== false && n.published !== 0} className="rounded border-gray-300 text-tech-accent pointer-events-none" />
                     </td>
+                    {lang === 'zh' && (
+                      <td className="px-4 py-3"><SyncStatusBadge syncStatus={(n as any).syncStatus} /></td>
+                    )}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         {lang === 'zh' && (

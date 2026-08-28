@@ -27,6 +27,7 @@ import toast from 'react-hot-toast'
 import { settingsApi } from '@/utils/api'
 import LanguageSelect from '@/components/admin/LanguageSelect'
 import AiSyncModal from '@/components/admin/AiSyncModal'
+import SyncStatusBadge from '@/components/admin/SyncStatusBadge'
 import { Sparkles } from 'lucide-react'
 import { useSettings } from '@/contexts/SettingsContext'
 import type { Settings, FooterSection, FooterLayout, FooterSocialLink, PageTransitionChoice } from '@/types'
@@ -150,6 +151,7 @@ export default function AdminSettingsPage() {
   const [assetPickerSource, setAssetPickerSource] = useState<'user' | 'system'>('user')
   const [lang, setLang] = useState('zh')
   const [syncOpen, setSyncOpen] = useState(false)
+  const [settingsSyncStatus, setSettingsSyncStatus] = useState<{ missing: string[]; synced: boolean } | undefined>()
   const { refreshSettings } = useSettings()
 
   const {
@@ -242,7 +244,8 @@ export default function AdminSettingsPage() {
   const fetchSettings = async () => {
     try {
       setIsLoading(true)
-      const response = await settingsApi.get(lang)
+      const response = await settingsApi.get(lang, true)
+      setSettingsSyncStatus((response as any).syncStatus)
       if (response.success) {
         const { wechat_qrcode: _ignore, ...raw } = response.data || {}
         const { site_record: _r1, nav_layout_style: _r2, theme_overrides: _r3, ...serverSettings } =
@@ -447,6 +450,9 @@ export default function AdminSettingsPage() {
           >
             <Sparkles className="w-4 h-4 mr-1" />AI 一键转换到其他语言
           </button>
+        )}
+        {lang === 'zh' && (
+          <SyncStatusBadge syncStatus={settingsSyncStatus} />
         )}
         <AiSyncModal
           open={syncOpen}

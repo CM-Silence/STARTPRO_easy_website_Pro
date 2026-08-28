@@ -7,6 +7,7 @@ const {
   logActivity 
 } = require('../middleware/auth')
 const { resolveLang } = require('../utils/resolveLang')
+const { computeMissing } = require('../utils/syncStatus')
 
 // 获取所有导航项目（公开接口）
 router.get('/', async (req, res) => {
@@ -52,12 +53,24 @@ router.get('/admin', authenticateToken, requireEditor, async (req, res) => {
     const lang = resolveLang(req.query.lang)
     const [navItems] = await db.execute(`
       SELECT
-        id, name, url, target, parent_id, sort_order, is_active, lang,
+        id, name, url, target, parent_id, sort_order, is_active, lang, is_synced,
         created_at, updated_at
       FROM navigation
       WHERE lang = ?
       ORDER BY sort_order ASC, id ASC
     `, [lang])
+
+    if (lang === 'zh' && navItems.length) {
+      try {
+        const missing = await computeMissing({ table: 'navigation', by: 'source', ids: navItems.map((r) => r.id) })
+        navItems.forEach((r) => {
+          const miss = missing.get(String(r.id)) || []
+          r.syncStatus = { missing: miss, synced: miss.length === 0 }
+        })
+      } catch (e) {
+        console.error('计算导航同步状态失败', e)
+      }
+    }
 
     res.json({
       success: true,
@@ -244,7 +257,7 @@ router.put('/:id',
       // 执行更新
       values.push(id)
       await db.execute(
-        `UPDATE navigation SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`,
+        `UPDATE navigation SET ${updates.join(', ')}, is_synced = 0, updated_at = NOW() WHERE id = ?`,
         values
       )
 

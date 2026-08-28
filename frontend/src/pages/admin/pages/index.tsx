@@ -23,6 +23,7 @@ import {
 import { pagesApi, tagsApi } from '@/utils/api'
 import LanguageSelect from '@/components/admin/LanguageSelect'
 import AiSyncModal from '@/components/admin/AiSyncModal'
+import SyncStatusBadge from '@/components/admin/SyncStatusBadge'
 import { formatDateTime } from '@/utils'
 import toast from 'react-hot-toast'
 import type { PageContent, PaginatedResponse, Tag } from '@/types'
@@ -51,6 +52,12 @@ export default function AdminPagesPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [syncOpen, setSyncOpen] = useState(false)
   const [syncIds, setSyncIds] = useState<string[]>([])
+
+  // 中文视图额外显示「同步状态」列
+  const gridCls =
+    lang === 'zh'
+      ? 'md:grid-cols-[36px_2.4fr_0.8fr_1.2fr_1fr_1.6fr_1fr_2.2fr]'
+      : 'md:grid-cols-[36px_2.4fr_0.8fr_1.2fr_1fr_1.6fr_2.2fr]'
 
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -524,7 +531,7 @@ export default function AdminPagesPage() {
             <>
               {/* 表头 */}
               <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-3">
-                <div className="hidden md:grid grid-cols-[36px_3fr_1fr_3fr_1fr_1fr_2.5fr] gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <div className={`hidden md:grid ${gridCls} gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider`}>
                   <div>
                     <input type="checkbox" checked={pages.length > 0 && selectedIds.length === pages.length} onChange={toggleSelectAll} className="rounded" />
                   </div>
@@ -533,6 +540,7 @@ export default function AdminPagesPage() {
                   <div>页面标签</div>
                   <div>创建人</div>
                   <div>更新时间</div>
+                  {lang === 'zh' && <div>同步状态</div>}
                   <div className="text-left">操作</div>
                 </div>
                 <div className="md:hidden text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -552,34 +560,30 @@ export default function AdminPagesPage() {
                       transition={{ delay: index * 0.05 }}
                       className="px-6 py-4 hover:bg-gray-200/50 transition-colors"
                     >
-                      <div className="grid gap-4 items-start md:items-center md:grid-cols-[36px_3fr_1fr_3fr_1fr_1fr_2.5fr]">
+                      <div className={`grid gap-4 items-start md:items-center ${gridCls}`}>
                         {/* 选择 */}
                         <div>
                           <input type="checkbox" checked={selectedIds.includes(String(page.id))} onChange={() => toggleSelect(String(page.id))} className="rounded" />
                         </div>
                         {/* 标题 */}
-                        <div>
-                          <div className="flex items-start space-x-3">
+                        <div className="min-w-0 overflow-hidden">
+                          <div className="flex items-start space-x-3 min-w-0">
                             <div className="flex-shrink-0">
                               <FileText className="w-5 h-5 text-gray-400" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate" title={page.title}>
                                 {page.title}
                               </h3>
-                              {page.template_data && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-1">
-                                  可视化编辑
-                                </span>
-                              )}
-                              <div className="mt-1 flex items-center flex-wrap gap-2 text-xs text-gray-500 dark:text-gray-400">
+                              <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                                 <Link
                                   href={pagePath || '#'}
                                   target="_blank"
-                                  className="inline-flex items-center space-x-1 text-tech-accent hover:text-tech-accent-dark"
+                                  title={pagePath || '未设置路径'}
+                                  className="inline-flex items-center space-x-1 text-tech-accent hover:text-tech-accent-dark truncate min-w-0"
                                 >
-                                  <LinkIcon className="w-3 h-3" />
-                                  <span className="truncate max-w-[10rem] md:max-w-[14rem] lg:max-w-[18rem]">
+                                  <LinkIcon className="w-3 h-3 flex-shrink-0" />
+                                  <span className="truncate max-w-[8rem] md:max-w-[11rem] lg:max-w-[15rem]">
                                     {pagePath || '未设置路径'}
                                   </span>
                                 </Link>
@@ -587,10 +591,10 @@ export default function AdminPagesPage() {
                                   type="button"
                                   onClick={() => copyPageLink(page)}
                                   disabled={!pagePath}
-                                  className="inline-flex items-center space-x-1 px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="复制链接"
+                                  className="p-1 rounded-md text-gray-400 dark:text-gray-500 hover:text-tech-accent hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  <Copy className="w-3 h-3" />
-                                  <span>复制链接</span>
+                                  <Copy className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             </div>
@@ -611,41 +615,50 @@ export default function AdminPagesPage() {
                         </div>
 
                         {/* 标签 */}
-                        <div className="space-y-2">
+                        <div className="space-y-1 min-w-0">
                           {Array.isArray(page.tags) && page.tags.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {(page.tags as Array<{ id: string; name: string } | string>).map(tag => (
-                                <span
-                                  key={typeof tag === 'string' ? tag : tag.id}
-                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-                                >
-                                  {(() => {
-                                    if (typeof tag === 'string') return tag.replace(/^tag_/, '')
-                                    if (tag && typeof tag === 'object' && 'name' in tag) return tag.name.replace(/^tag_/, '')
+                            <div className="space-y-1">
+                              {(page.tags as any[]).slice(0, 3).map((tag, ti) => {
+                                const name = (() => {
+                                  if (typeof tag === 'string') return tag.replace(/^tag_/, '')
+                                  if (tag && typeof tag === 'object' && 'name' in tag) return (tag as any).name.replace(/^tag_/, '')
+                                  return ''
+                                })()
+                                return (
+                                  <div key={ti} className="truncate max-w-[8rem] text-xs text-gray-600 dark:text-gray-400" title={name}>
+                                    {name}
+                                  </div>
+                                )
+                              })}
+                              {page.tags.length > 3 && (
+                                <div
+                                  className="truncate max-w-[8rem] text-xs text-gray-400 dark:text-gray-500"
+                                  title={(page.tags as any[]).slice(3).map((t) => {
+                                    if (typeof t === 'string') return t.replace(/^tag_/, '')
+                                    if (t && typeof t === 'object' && 'name' in t) return (t as any).name.replace(/^tag_/, '')
                                     return ''
-                                  })()}
-                                </span>
-                              ))}
+                                  }).join('、')}
+                                >
+                                  … 等 {page.tags.length} 个
+                                </div>
+                              )}
                             </div>
-                          ) : (
-                            <span className="text-sm text-gray-500 dark:text-gray-400">无标签</span>
-                          )}
+                          ) : null}
                           <button
                             onClick={() => {
                               const currentTagIds = Array.isArray(page.tags)
                                 ? page.tags.map(tag =>
-                                    typeof tag === 'string' ? tag : tag.id
+                                    typeof tag === 'string' ? tag : (tag as any).id
                                   )
                                 : []
                               setSelectedTagsForEditing(currentTagIds)
                               setEditingTagsForPageId(page.id)
                               setIsTagModalOpen(true)
                             }}
-                            className="mt-1 inline-flex items-center px-2 py-1 text-tech-accent hover:text-tech-accent-dark bg-tech-accent/10 hover:bg-tech-accent/20 rounded text-sm transition-colors"
+                            className="p-1 text-tech-accent hover:text-tech-accent-dark bg-tech-accent/10 hover:bg-tech-accent/20 rounded transition-colors"
                             title="编辑标签"
                           >
-                            <Plus className="w-3 h-3 mr-1" />
-                            <span>编辑标签</span>
+                            <Plus className="w-3.5 h-3.5" />
                           </button>
                         </div>
 
@@ -668,6 +681,11 @@ export default function AdminPagesPage() {
                             </span>
                           </div>
                         </div>
+
+                        {/* 同步状态（仅中文视图） */}
+                        {lang === 'zh' && (
+                          <div><SyncStatusBadge syncStatus={(page as any).syncStatus} /></div>
+                        )}
 
                         {/* 操作 */}
                         <div>

@@ -11,6 +11,7 @@ const {
 } = require('../middleware/auth')
 const { validateUpdateSettings } = require('../middleware/validation')
 const { resolveLang } = require('../utils/resolveLang')
+const { getTargetLangs } = require('../utils/syncStatus')
 
 // 需按语言分库保存的本地化设置键；其余键（主题/字体/ICP/联系方式等）为全局共享，仅写 zh 行
 const LOCALIZED_SETTINGS = [
@@ -214,6 +215,27 @@ router.get('/', async (req, res) => {
 
     settingsObject.footer_layout = normalizeFooterLayout(settingsObject.footer_layout)
     settingsObject.footer_social_links = normalizeFooterSocialLinks(settingsObject.footer_social_links)
+
+    // 后台「系统设置」页按需计算同步状态：缺失/落后的目标语言
+    if (req.query.withSync === '1') {
+      try {
+        const targets = await getTargetLangs()
+        const missing = []
+        if (targets.length) {
+          const ph = LOCALIZED_SETTINGS.map(() => '?').join(',')
+          for (const l of targets) {
+            const [[row]] = await db.execute(
+              `SELECT COUNT(DISTINCT setting_key) AS c FROM settings WHERE lang = ? AND setting_key IN (${ph})`,
+              [l, ...LOCALIZED_SETTINGS]
+            )
+            if (row.c < LOCALIZED_SETTINGS.length) missing.push(l)
+          }
+        }
+        return res.json({ success: true, data: settingsObject, syncStatus: { missing, synced: missing.length === 0 } })
+      } catch (e) {
+        console.error('计算设置同步状态失败', e)
+      }
+    }
 
     res.json({
       success: true,

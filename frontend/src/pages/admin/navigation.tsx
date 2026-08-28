@@ -16,6 +16,7 @@ import {
 import { navigationApi, pagesApi } from '@/utils/api'
 import LanguageSelect from '@/components/admin/LanguageSelect'
 import AiSyncModal from '@/components/admin/AiSyncModal'
+import SyncStatusBadge from '@/components/admin/SyncStatusBadge'
 import { Sparkles } from 'lucide-react'
 import { formatDateTime } from '@/utils'
 import toast from 'react-hot-toast'
@@ -580,6 +581,8 @@ export default function NavigationManagePage() {
                   <h3 className="font-medium text-gray-900 dark:text-white">
                     {item.name}
                   </h3>
+
+                  {lang === 'zh' && <SyncStatusBadge syncStatus={(item as any).syncStatus} />}
                   
                   {!item.is_active && (
                     <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded">

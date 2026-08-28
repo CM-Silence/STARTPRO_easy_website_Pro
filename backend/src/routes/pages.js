@@ -11,6 +11,7 @@ const {
 } = require('../middleware/validation')
 const { parseTemplateData, generateHtmlFromComponents } = require('../utils/pageContent')
 const { resolveLang } = require('../utils/resolveLang')
+const { computeMissing } = require('../utils/syncStatus')
 
 // Helpers
 const normalizeSlug = (title, slug) => {
@@ -116,6 +117,7 @@ router.get('/', validatePagination, async (req, res) => {
       SELECT
         pages.id, pages.title, pages.slug, pages.excerpt, pages.featured_image,
         pages.meta_title, pages.meta_description, pages.published, pages.sort_order, pages.template_data,
+        pages.is_synced,
         pages.created_at, pages.updated_at,
         u.username as created_by_name
       FROM pages
@@ -134,6 +136,19 @@ router.get('/', validatePagination, async (req, res) => {
         return processedPage
       })
     )
+
+    // 中文列表：附带 AI 同步状态（是否已同步到所有语言、缺失哪些语言）
+    if (lang === 'zh' && processedPages.length) {
+      try {
+        const missing = await computeMissing({ table: 'pages', by: 'slug', ids: processedPages.map((p) => p.id) })
+        processedPages.forEach((p) => {
+          const miss = missing.get(String(p.id)) || []
+          p.syncStatus = { missing: miss, synced: miss.length === 0 }
+        })
+      } catch (e) {
+        console.error('计算页面同步状态失败', e)
+      }
+    }
 
     res.json({
       success: true,
@@ -534,7 +549,7 @@ router.put('/:id',
       try {
         if (updates.length > 0) {
           values.push(id)
-          await connection.execute(`UPDATE pages SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`, values)
+          await connection.execute(`UPDATE pages SET ${updates.join(', ')}, is_synced = 0, updated_at = NOW() WHERE id = ?`, values)
         } else {
           await connection.execute('UPDATE pages SET updated_at = NOW() WHERE id = ?', [id])
         }

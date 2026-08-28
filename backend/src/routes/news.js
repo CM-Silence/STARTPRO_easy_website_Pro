@@ -8,6 +8,7 @@ const {
   validateId
 } = require('../middleware/validation')
 const { resolveLang } = require('../utils/resolveLang')
+const { computeMissing } = require('../utils/syncStatus')
 
 // 归一化：date 空置 null，pinned 布尔 → 0/1
 // 归一化：date 空置 null，pinned 布尔 → 0/1；date 只接受 YYYY-MM-DD(字符串或 Date 均转成该格式)，否则置 null
@@ -57,11 +58,23 @@ router.get('/', authenticateToken, requireEditor, async (req, res) => {
     else if (sort === 'date_desc') order = 'date IS NULL, date DESC, created_at DESC'
 
     const [rows] = await db.execute(
-      `SELECT id, title, DATE_FORMAT(date, "%Y-%m-%d") AS date, summary, link, image, pinned, published, created_at, updated_at
+      `SELECT id, title, DATE_FORMAT(date, "%Y-%m-%d") AS date, summary, link, image, pinned, published, is_synced, created_at, updated_at
        FROM news ${where} ORDER BY ${order} LIMIT ${limit} OFFSET ${offset}`,
       params
     )
     const [[{ total }]] = await db.execute(`SELECT COUNT(*) AS total FROM news ${where}`, params)
+
+    if (lang === 'zh' && rows.length) {
+      try {
+        const missing = await computeMissing({ table: 'news', by: 'source', ids: rows.map((r) => r.id) })
+        rows.forEach((r) => {
+          const miss = missing.get(String(r.id)) || []
+          r.syncStatus = { missing: miss, synced: miss.length === 0 }
+        })
+      } catch (e) {
+        console.error('计算新闻同步状态失败', e)
+      }
+    }
 
     res.json({
       success: true,
@@ -210,7 +223,7 @@ router.put('/:id', authenticateToken, requireEditor, validateId, validateUpdateN
   try {
     const n = normalize(req.body)
     const [result] = await db.execute(
-      `UPDATE news SET title = ?, date = ?, summary = ?, link = ?, image = ?, pinned = ?, published = ?, updated_at = NOW() WHERE id = ?`,
+      `UPDATE news SET title = ?, date = ?, summary = ?, link = ?, image = ?, pinned = ?, published = ?, is_synced = 0, updated_at = NOW() WHERE id = ?`,
       [n.title, n.date, n.summary, n.link, n.image, n.pinned, n.published, req.params.id]
     )
     if (result.affectedRows === 0) {

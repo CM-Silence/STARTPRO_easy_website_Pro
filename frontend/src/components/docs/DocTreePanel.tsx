@@ -103,7 +103,15 @@ export default function DocTreePanel({ tree, selectedDocId, loading, onSelectDoc
                             }`}
                             style={{ paddingLeft: 8 }}
                           >
-                            {doc.title}
+                            <span className="flex items-center gap-1 min-w-0">
+                              {(doc as any).syncStatus && (
+                                <span
+                                  className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${(doc as any).syncStatus.synced ? 'bg-green-500' : 'bg-orange-400'}`}
+                                  title={(doc as any).syncStatus.synced ? '已同步' : `未同步：${((doc as any).syncStatus.missing || []).join(', ')}`}
+                                />
+                              )}
+                              <span className="truncate">{doc.title}</span>
+                            </span>
                           </button>
                         )
                       })}

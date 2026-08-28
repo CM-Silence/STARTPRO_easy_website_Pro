@@ -3,6 +3,7 @@ const db = require('../config/database')
 const { authenticateToken, requireAdmin, requireEditor, logActivity } = require('../middleware/auth')
 const { validateId } = require('../middleware/validation')
 const { translateItem } = require('../utils/aiTranslate')
+const { computeMissing, getTargetLangs } = require('../utils/syncStatus')
 
 const router = express.Router()
 
@@ -663,6 +664,20 @@ async function syncOne({ type, srcId, lang, userId }) {
     }
   }
 
+  // 同步后重算所有目标语言，更新中文源记录 is_synced（同步到全部语言=1）
+  try {
+    const TABLE = { page: 'pages', doc: 'docs', news: 'news', nav: 'navigation' }
+    const BY = { page: 'slug', doc: 'slug', news: 'source', nav: 'source' }
+    const missing = await computeMissing({ table: TABLE[type], by: BY[type], ids: [srcId] })
+    const miss = missing.get(String(srcId)) || []
+    await db.execute(`UPDATE \`${TABLE[type]}\` SET is_synced = ? WHERE id = ?`, [
+      miss.length === 0 ? 1 : 0,
+      srcId
+    ])
+  } catch (e) {
+    console.error('更新同步状态失败', e)
+  }
+
   return { type, srcId, lang, targetId }
 }
 
@@ -715,6 +730,7 @@ router.post('/sync-settings', authenticateToken, requireEditor, logActivity('syn
       }
       results.push({ lang })
     }
+
     res.json({ success: true, message: '设置已转换到所选语言', data: results })
   } catch (error) {
     console.error('AI sync-settings failed:', error)
