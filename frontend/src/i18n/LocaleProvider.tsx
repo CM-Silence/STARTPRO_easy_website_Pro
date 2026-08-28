@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/router'
-import i18n, { LOCALES, type Locale } from './index'
+import i18n, { type Locale } from './index'
 import { languagesApi } from '@/utils/api'
 
 interface EnabledLang {
@@ -54,7 +54,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     for (const l of languages) if (l.suffix) suffixMap[l.suffix] = l.code
     const segs = path.split('/')
     const first = segs[1] || ''
-    if (first && suffixMap[first] && (LOCALES as readonly string[]).includes(suffixMap[first])) {
+    if (first && suffixMap[first]) {
       return { locale: suffixMap[first] as Locale, suffix: first }
     }
     return { locale: 'zh' as Locale, suffix: '' }
