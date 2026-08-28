@@ -1,7 +1,9 @@
 import React from 'react'
 import { TemplateComponent } from '@/types/templates'
+import { useLocale } from '@/i18n/LocaleProvider'
 
 export const LinkBlockPreview: React.FC<{ component: TemplateComponent }> = ({ component }) => {
+  const { localize } = useLocale()
   const {
     title,
     links = [],
@@ -26,6 +28,12 @@ export const LinkBlockPreview: React.FC<{ component: TemplateComponent }> = ({ c
     .filter(Boolean)
     .join(' ')
 
+  // 绝对/外部 URL → 新开页面；否则为站内相对路径，走统一路由切换（滑块转场、同页），不新开
+  const isExternal = (u: any): boolean => {
+    const s = String(u || '').trim()
+    return !s || /^(https?:|mailto:|tel:|\/\/)/i.test(s)
+  }
+
   const displayLinks = links.length > 0 ? links : [
     { text: '官方网站', url: 'https://example.com' },
     { text: '产品文档', url: 'https://docs.example.com' },
@@ -45,9 +53,9 @@ export const LinkBlockPreview: React.FC<{ component: TemplateComponent }> = ({ c
             {displayLinks.map((link: any, index: number) => (
               <a
                 key={index}
-                href={link.url || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={localize(link.url) || '#'}
+                target={isExternal(link.url) ? '_blank' : undefined}
+                rel={isExternal(link.url) ? 'noopener noreferrer' : undefined}
                 className={buttonClass}
               >
                 {link.text || '链接文本'}
