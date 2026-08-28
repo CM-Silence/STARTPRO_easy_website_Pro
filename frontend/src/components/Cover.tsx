@@ -210,7 +210,7 @@ export function Cover({ enabled }: { enabled: boolean }) {
 
   const brand = useMemo(() => {
     const raw = ((settings as any)?.transition_main_title as string) || (settings?.site_name as string) || ''
-    return raw ? raw.replace(/™$/, '') + '™' : ''
+    return raw || ''
   }, [settings?.site_name, (settings as any)?.transition_main_title])
   const tagline = ((settings as any)?.transition_subtitle as string) || ''
   const accent = 'rgba(var(--color-accent-rgb, 0, 212, 255), 1)'
@@ -254,17 +254,17 @@ export function Cover({ enabled }: { enabled: boolean }) {
       {/* 品牌大字 + 副标题：固定在滑块中央，初始不可见；到达中央时快速渐显，随后随幕布一起上移 */}
       <div
         ref={textRef}
-        className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-6"
+        className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center px-4 sm:px-6"
         style={{ opacity: 0, transform: 'translateZ(0)' }}
       >
         <div
-          className="text-4xl md:text-6xl font-bold tracking-[0.18em] whitespace-nowrap"
+          className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-wide md:tracking-[0.18em] w-full break-words"
           style={{ color: 'var(--color-text-primary, #0f172a)' }}
         >
           {brand}
         </div>
         <div
-          className="text-xl md:text-2xl tracking-[0.24em] font-light"
+          className="text-base sm:text-xl md:text-2xl tracking-wider md:tracking-[0.24em] font-light w-full break-words"
           style={{ color: 'var(--color-text-secondary, #64748b)' }}
         >
           {tagline}
