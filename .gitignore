@@ -30,5 +30,7 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# 推送脚本
+# 推送脚本（本地工具，不入库；跨平台逻辑在 push.js，push.sh 为 *nix 启动器）
 push-all.ps1
+push.js
+push.sh
