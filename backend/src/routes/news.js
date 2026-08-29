@@ -119,8 +119,10 @@ router.get('/index', async (req, res) => {
     const lang = resolveLang(req.query.lang)
     const page = Math.max(parseInt(req.query.page) || 1, 1)
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 100)
-    const skip = Math.max(parseInt(req.query.skip) || 0, 0)
     const search = (req.query.search || '').trim()
+
+    // 默认视图屏蔽前 N 条（供上方新闻卡片复用不重复展示）；搜索时忽略该屏蔽，应搜索全部
+    const skip = search ? 0 : Math.max(parseInt(req.query.skip) || 0, 0)
 
     let where = 'WHERE published = 1 AND lang = ?'
     const params = [lang]
