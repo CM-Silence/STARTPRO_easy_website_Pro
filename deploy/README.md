@@ -1,7 +1,7 @@
 # Pailink 在线自动部署（Gitee tag → Webhook → 自动发布）
 
 当往 Gitee 推送一个新 **tag**（如 `v1.2.0`）时，服务器会自动拉取该版本、安装依赖、
-构建前端、并用宝塔「Node 项目」（systemctl）重启前后端，实现"打完 tag 即自动发布"。
+构建前端、并用宝塔「PM2 管理器」（底层即 pm2）平滑重载前后端，实现"打完 tag 即自动发布"。
 
 ```
 本地打 tag 并推送  →  Gitee Webhook (POST)  →  pailink-deploy 服务（:3005）
@@ -11,10 +11,10 @@
                                           deploy/deploy.sh <tag>
                                     git fetch --tags → git checkout -f <tag>
                                         → backend: npm ci → frontend: npm ci + build
-                                        → systemctl restart 后端 / 前端 / 部署服务
+                                        → pm2 reload 后端 / 前端 / 部署服务
 ```
 
-`pailink-deploy` 是一个**独立**、很轻量的 Express 服务，作为宝塔「Node 项目」托管。
+`pailink-deploy` 是一个**独立**、很轻量的 Express 服务，由宝塔「PM2 管理器」托管。
 它不依赖、也不影响前端/后端 App 的生命周期，因此重启前后台都不会打断它。
 
 ---
@@ -27,18 +27,22 @@
 | `node` ≥ 18 | 跑部署服务 | `node -v` |
 | `npm` | 装依赖 | `npm -v` |
 | `flock` | 防并发部署（util-linux 自带） | `which flock` → 有路径即可 |
-| 宝塔「Node 项目」 | 托管前后台 + 部署服务（systemd） | 面板里已建好这三个 Node 项目 |
+| 宝塔「PM2 管理器」 | 托管前后台 + 部署服务（底层即 pm2） | 面板里已有这些 PM2 项目，`pm2 list` 可见 |
 
-**前台和后台必须已经用宝塔「Node 项目」管理器托管**（本方案用 `systemctl restart` 重启它们，
-不是 pm2）。查一下它们的 **systemd 单元名**，这正是要填进 `.env` 的值：
+**前台和后台必须在 pm2（宝塔 PM2 管理器）里**（本方案用 `pm2 reload` 重载它们）。确认方式：
 
 ```bash
-systemctl list-unit-files | grep -iE 'node|pailink'
-# 例如： node-pailink-backend.service / node-pailink-frontend.service ...
+pm2 list
+# 应能看到后端(3003)与前端(3001)两个进程
 ```
 
-**去掉 `.service` 后缀后的名字**，就是后面 `deploy/.env` 里的
-`BACKEND_APP` / `FRONTEND_APP` / `DEPLOY_SVC`（见第四节）。
+**`name` 列里的名字**，就是后面 `deploy/.env` 里的 `BACKEND_APP` / `FRONTEND_APP`。
+若名字是 pm2 自动取的（如 `server`/`start`），建议先改成稳定名，避免以后变：
+```bash
+pm2 rename server pailink-backend
+pm2 rename start  pailink-frontend
+pm2 save
+```
 
 ---
 
@@ -83,9 +87,9 @@ vi .env    # 或 nano .env
 | `PORT` | 是 | 部署服务监听端口 | 任选一个**没被占用**的端口。本机已用 3001(前端)、3003(后端)、23080(管理台) + nginx 80/443，避开这些即可 | `3005` |
 | `GITEE_TOKEN` | 强烈建议 | webhook 鉴权令牌 | **你自己生成一个随机串**，并把这个**同一个值**同时填到这里、以及 Gitee WebHook 的「密码」里（见第六节）。生成：`openssl rand -hex 24` | `（随机，别用示例）` |
 | `DEPLOY_DIR` | 是 | 部署目录（git clone 的位置） | 第二节里 `git clone ... <路径>` 的路径，用 `pwd` 确认 | `/var/www/pailink` |
-| `BACKEND_APP` | 是 | 后端 systemd 单元名 | **`systemctl list-unit-files \| grep -i node`** 里后端那条，去掉 `.service` 后缀（见第一节） | `node-pailink-backend` |
-| `FRONTEND_APP` | 是 | 前端 systemd 单元名 | 同上，前端那条 | `node-pailink-frontend` |
-| `DEPLOY_SVC` | 否(有默认) | 部署服务自身单元名 | 同上，部署服务那条（需先在宝塔建好该 Node 项目） | `node-pailink-deploy` |
+| `BACKEND_APP` | 是 | 后端 pm2 进程名 | **`pm2 list` 里后端那条的 `name` 列**（建议先 `pm2 rename` 成稳定名，见第一节） | `pailink-backend` |
+| `FRONTEND_APP` | 是 | 前端 pm2 进程名 | `pm2 list` 里前端那条的 `name` 列 | `pailink-frontend` |
+| `DEPLOY_SVC` | 否(有默认) | 部署服务 pm2 进程名 | 宝塔里给部署服务取的项目名（需先在 PM2 管理器建好该服务） | `pailink-deploy` |
 | `NODE_BIN` | 否 | 宝塔 node 的 bin 目录 | `ls /www/server/nodejs/` 看你用的版本；填 `<目录>/bin`。留空则自动探测最新 | `/www/server/nodejs/v18.20.0/bin` |
 | `DEPLOY_LOG` | 否(有默认) | 部署日志路径 | 你想放哪就放哪，**目录需存在且当前用户可写**；默认 `deploy/deploy.log` | `/var/www/pailink/deploy/deploy.log` |
 | `ALLOWED_IPS` | 否 | 只允许这些来源 IP 回调，逗号分隔 | 可填写 Gitee WebHook 的**出口 IP**（Gitee 文档有公布）；留空 = 不限制来源 IP | 留空 或 `1.2.3.4,5.6.7.8` |
@@ -96,9 +100,9 @@ vi .env    # 或 nano .env
 PORT=3005
 GITEE_TOKEN=3f9c2a8e5b1d70c4a9e6f2b8d1a3c5e7f9a0b2c4
 DEPLOY_DIR=/var/www/pailink
-BACKEND_APP=node-pailink-backend        # 用 systemctl list-unit-files | grep node 确认实际值
-FRONTEND_APP=node-pailink-frontend
-DEPLOY_SVC=node-pailink-deploy
+BACKEND_APP=pailink-backend        # 与 pm2 rename 后的名字一致
+FRONTEND_APP=pailink-frontend
+DEPLOY_SVC=pailink-deploy
 NODE_BIN=/www/server/nodejs/v18.20.0/bin   # ls /www/server/nodejs/ 确认实际版本
 DEPLOY_LOG=/var/www/pailink/deploy/deploy.log
 ALLOWED_IPS=
@@ -106,19 +110,21 @@ ALLOWED_IPS=
 
 ---
 
-## 五、用宝塔「Node 项目」托管部署服务
+## 五、用宝塔「PM2 管理器」托管部署服务
 
-在宝塔面板新增一个 Node 项目来跑部署服务（前台/后台你早已用 Node 项目管理，不用动）：
+在宝塔「PM2 管理器」里新增一个项目跑部署服务（前台/后台你已用它托管，不用动）：
 
 | 设置项 | 填什么 |
 | --- | --- |
-| 项目名称 | `node-pailink-deploy`（记下它，填进 `.env` 的 `DEPLOY_SVC`） |
+| 项目名称 | `pailink-deploy`（记下它，填进 `.env` 的 `DEPLOY_SVC`） |
 | 运行目录 / 项目目录 | `/var/www/pailink/deploy` |
-| 启动命令 | `node server.js` |
-| Node 版本 | 选一个 ≥ 18 的版本（记下它，填进 `NODE_BIN`） |
+| 启动文件 / 启动命令 | `server.js` |
 | 端口 | `3005`（与 `PORT` 一致） |
 
-面板里的 Node 项目由宝塔负责拉起与**开机自启**，无需再配置 pm2。
+宝塔「PM2 管理器」负责拉起与**开机自启**，无需额外配置 pm2 启动项。
+
+> ⚠ **部署服务也必须在同一个 pm2（root）里跑**，`deploy.sh` 才能 `pm2 reload` 看到它的
+> 三个兄弟进程（前后端 + 它自己）。别把部署服务放到别的没管理的环境。
 
 健康检查：
 
@@ -172,7 +178,7 @@ curl -X POST http://localhost:3005/webhook/gitee \
 tail -f /var/www/pailink/deploy/deploy.log
 ```
 
-应依次出现：`fetch` → `checkout v-test-1` → 前后端 `npm` → `systemctl restart`。
+应依次出现：`fetch` → `checkout v-test-1` → 前后端 `npm` → `pm2 reload`。
 （第一次跑 `npm ci` 会稍慢，属正常。）
 
 ---
@@ -201,12 +207,12 @@ node push.js        # Windows / macOS / Linux 通用
 | 没触发 | 日志 `[ignore] not a tag push` → 确认推的是 tag（`refs/tags/*`）不是分支；Gitee WebHook 是否勾选 Push、URL 可达、是否启用 |
 | 401 | Gitee「密码」与 `GITEE_TOKEN` 不一致 |
 | 403 | 来源 IP 不在 `ALLOWED_IPS` |
-| `curl /health` 空或连不上 | 服务没起来：宝塔「Node 项目」看状态 / `systemctl status node-pailink-deploy` 看报错；`.env` 是否有误 |
-| 部署脚本报错 | 看 `deploy.log`：`fetch/checkout` 失败多为 tag 未推送上 Gitee，或部署目录有本地改动；`systemctl restart` 失败多为 `BACKEND_APP`/`FRONTEND_APP` **单元名填错**或**权限不足**（非 root 需 sudo，deploy.sh 已自动处理） |
+| `curl /health` 空或连不上 | 服务没起来：宝塔「PM2 管理器」看状态 / `pm2 logs pailink-deploy` 看报错；`.env` 是否有误 |
+| 部署脚本报错 | 看 `deploy.log`：`fetch/checkout` 失败多为 tag 未推送上 Gitee，或部署目录有本地改动；`pm2 reload` 失败多为 `BACKEND_APP`/`FRONTEND_APP` **进程名填错**，或**部署服务没和前后端跑在同一个 pm2（root）里** |
 | 后台接口 401 | 自动部署**从不改动 `.env`**（被 gitignore 保护）；若轮换了 `JWT_SECRET` 属正常失效 |
 
 ## 安全注意
 
 - 部署目录负责自动切版本：**别在其中手动修改并提交配置**（`checkout -f` 会丢弃对已跟踪文件的本地改动；未跟踪的 `.env`、`backend/uploads/` 不受影响）。
 - 部署服务建议不直接暴露公网，或用防火墙 / `ALLOWED_IPS` 收紧。
-- 本服务代码随 tag 更新，部署末尾会尝试 `systemctl restart` 部署服务以换上最新 webhook 代码。
+- 本服务代码随 tag 更新，部署末尾会尝试 `pm2 reload` 部署服务以换上最新 webhook 代码。
