@@ -16,7 +16,8 @@ router.get('/status', async (req, res) => {
       `SELECT
         (SELECT MAX(n.updated_at) FROM navigation n WHERE n.is_active = 1 AND n.lang = ?) AS navigation,
         (SELECT MAX(s.updated_at) FROM settings s WHERE s.lang IN ('zh', ?))          AS settings,
-        (SELECT MAX(nw.updated_at) FROM news nw WHERE nw.published = 1 AND nw.lang = ?) AS news`,
+        (SELECT MAX(nw.updated_at) FROM news nw WHERE nw.published = 1 AND nw.lang = ?) AS news,
+        (SELECT MAX(l.updated_at) FROM languages l)                                   AS languages`,
       [lang, lang, lang]
     )
 

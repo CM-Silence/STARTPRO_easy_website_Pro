@@ -15,6 +15,7 @@ export interface ContentStatus {
   navigation?: string | null
   settings?: string | null
   news?: string | null
+  languages?: string | null
 }
 
 export interface CacheEntry<T = unknown> {

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import { settingsApi, navigationApi, languagesApi } from '@/utils/api'
+import { settingsApi, navigationApi } from '@/utils/api'
 import { useLocale } from '@/i18n/LocaleProvider'
 import { coveredNavigate } from '@/lib/transitionNavigation'
 import type { NavigationItem } from '@/types'
@@ -83,7 +83,6 @@ export default function ThemeAwareHeader({
   const { t } = useTranslation('common')
   const [isOpen, setIsOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
-  const [languages, setLanguages] = useState<{ id: number; display_name: string; code: string; suffix: string }[]>([])
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
   const defaultNavigation = useMemo(() => makeDefaultNavigation(t), [t])
@@ -122,7 +121,7 @@ export default function ThemeAwareHeader({
   }, [updateThemeStyles])
 
   // --- 获取动态导航数据 ---
-  const { locale, suffix, localize } = useLocale()
+  const { locale, suffix, localize, languages } = useLocale()
   useEffect(() => {
     const fetchDynamicData = async () => {
       try {
@@ -161,19 +160,7 @@ export default function ThemeAwareHeader({
     fetchDynamicData()
   }, [locale, defaultNavigation])
 
-  // --- 语言切换器：读取已启用的语言（仅一个时隐藏） ---
-  useEffect(() => {
-    let mounted = true
-    languagesApi
-      .getEnabled()
-      .then((res) => {
-        if (mounted && res.success) setLanguages(res.data || [])
-      })
-      .catch(() => {})
-    return () => {
-      mounted = false
-    }
-  }, [])
+  // --- 语言切换器：已启用语言由 LocaleProvider 提供（缓存驱动，自动隐藏已禁用语言） ---
 
   // --- 辅助函数 ---
   const isActiveLink = (href: string) => {
