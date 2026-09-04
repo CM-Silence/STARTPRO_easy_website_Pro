@@ -32,6 +32,7 @@ export function Cover({ enabled }: { enabled: boolean }) {
   const navGen = useRef(0)          // 导航代际，防止旧导航的延迟上移误触新导航
   const revealedGen = useRef(0)     // 已上移的代际，确保每次切换只播一次上移、绝不漏播
   const pushTimer = useRef<number | null>(null)
+  const prefetchedRef = useRef<Set<string>>(new Set())
   const [mountedWithMotion, setMountedWithMotion] = useState(!reduceMotion)
 
   useEffect(() => {
@@ -133,6 +134,21 @@ export function Cover({ enabled }: { enabled: boolean }) {
     return norm(url) === norm(typeof window !== 'undefined' ? window.location.pathname : '')
   }
 
+  // 把站内相对链接归一为「可导航/可预取」的站内路径；不可导航(外链/#/静态/后台)返回 null。
+  // 与 onDocClick 共享，供链接悬停预取使用。
+  const toHref = (raw: string): string | null => {
+    if (!raw || raw.startsWith('#') || raw.startsWith('//')) return null
+    let href = raw
+    if (href.startsWith(`${window.location.origin}/`)) href = href.slice(window.location.origin.length)
+    if (!href.startsWith('/')) return null
+    if (href.startsWith('/admin') || href.startsWith('/login')) return null
+    // 多语言统一入口：站内路径（非静态/API）未带当前前缀时补语言前缀
+    if (suffix && !href.startsWith(`/${suffix}`) && !/^\/(uploads|system-default|_next|api|ck-umd|favicon|images\/)/.test(href)) {
+      href = `/${suffix}${href}`
+    }
+    return href
+  }
+
   // 拦截页面内导航：先上划盖满，再 push，加载完再上移
   useEffect(() => {
     if (!enabled || !router?.events) return
@@ -160,22 +176,27 @@ export function Cover({ enabled }: { enabled: boolean }) {
       if (!armed.current || active.current) return // 首屏期间或已有切换进行中，走默认行为
       const el = (e.target as HTMLElement)?.closest?.('a[href]')
       if (!el) return
-      const raw = el.getAttribute('href') || ''
-      if (!raw || raw.startsWith('#')) return
       if (el.getAttribute('target') === '_blank' || el.hasAttribute('download')) return
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.defaultPrevented) return
-      // 归一到站内路径（同源绝对 → 路径）
-      let href = raw
-      if (href.startsWith(`${window.location.origin}/`)) href = href.slice(window.location.origin.length)
-      if (!href.startsWith('/') || href.startsWith('//')) return
-      // 后台/登录不加前缀也不拦
-      if (href.startsWith('/admin') || href.startsWith('/login')) return
-      // 多语言统一入口：内部站内路径（非静态/API、未带当前前缀）补语言前缀 —— 覆盖所有组件渲染出的链接
-      if (suffix && !href.startsWith(`/${suffix}`) && !/^\/(uploads|system-default|_next|api|ck-umd|favicon|images\/)/.test(href)) {
-        href = `/${suffix}${href}`
-      }
+      const href = toHref(el.getAttribute('href') || '')
+      if (!href) return
       e.preventDefault()
       fireNav(href)
+    }
+
+    // 链接悬停即预取目标页数据：让后续点击 router.push 直接命中已备好的数据，
+    // 弱网时也不用当场等 getServerSideProps，幕布可尽快上移切页（有缓存/已预取即不卡）。
+    const onPointerOver = (e: PointerEvent | MouseEvent) => {
+      if (!armed.current || active.current) return
+      const el = (e.target as HTMLElement)?.closest?.('a[href]')
+      if (!el) return
+      if (el.getAttribute('target') === '_blank' || el.hasAttribute('download')) return
+      const href = toHref(el.getAttribute('href') || '')
+      if (!href) return
+      if (typeof window !== 'undefined' && samePath(href)) return // 不预取当前页
+      if (prefetchedRef.current.has(href)) return
+      prefetchedRef.current.add(href)
+      router.prefetch(href).catch(() => {})
     }
 
     // 回退路径：后退/前进/程序化导航（未被点击拦截的）
@@ -194,11 +215,13 @@ export function Cover({ enabled }: { enabled: boolean }) {
     }
 
     document.addEventListener('click', onDocClick, true)
+    document.addEventListener('pointerover', onPointerOver, true)
     router.events.on('routeChangeStart', onStart)
     router.events.on('routeChangeComplete', onDone)
     router.events.on('routeChangeError', onDone)
     return () => {
       document.removeEventListener('click', onDocClick, true)
+      document.removeEventListener('pointerover', onPointerOver, true)
       router.events.off('routeChangeStart', onStart)
       router.events.off('routeChangeComplete', onDone)
       router.events.off('routeChangeError', onDone)
