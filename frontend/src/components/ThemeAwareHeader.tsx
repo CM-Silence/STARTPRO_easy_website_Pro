@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { settingsApi, navigationApi } from '@/utils/api'
+import { readCacheKey } from '@/utils/dataCache'
 import { useLocale } from '@/i18n/LocaleProvider'
 import { coveredNavigate } from '@/lib/transitionNavigation'
 import type { NavigationItem } from '@/types'
@@ -122,6 +123,26 @@ export default function ThemeAwareHeader({
 
   // --- 获取动态导航数据 ---
   const { locale, suffix, localize, languages } = useLocale()
+
+  // 语言切换器数据源：与导航项同刻出现。导航在 SSR 页面首帧(HTML)即有，而语言是纯客户端数据；
+  // 这里在客户端挂载(hydrated)后同步读缓存中的已启用语言数组，让切换器尽可能早地有数据可用。
+  // 用 hydrated 保证服务端与客户端首帧显示一致（都先隐藏，避免水合不一致）。
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+  const switcherLanguages = (() => {
+    if (languages.length > 0) return languages
+    if (!hydrated) return []
+    try {
+      const body = readCacheKey<any>('languages')?.data
+      const list = body?.data
+      if (Array.isArray(list)) return list.filter((l: any) => l.is_enabled === 1)
+    } catch {
+      // 缓存读取异常时忽略
+    }
+    return []
+  })()
   useEffect(() => {
     const fetchDynamicData = async () => {
       try {
@@ -331,8 +352,9 @@ export default function ThemeAwareHeader({
 
           {/* === 右侧操作区：语言切换 + 汉堡菜单 === */}
           <div className="flex items-center">
-            {/* 语言切换器：停留在当前路径，仅切换语言前缀 */}
-            {languages.length > 1 && (
+            {/* 语言切换器：仅当已启用语言多于一种(>1)时展示；出现时机与导航项对齐（挂载后同步读缓存渲染）。
+                缓存只有一种语言时始终不显示（无空态闪现）。缓存有多语言时不等待后台网络。 */}
+            {switcherLanguages.length > 1 && (
             <div
               className="relative mr-1"
               onMouseEnter={() => setLangOpen(true)}
@@ -351,7 +373,7 @@ export default function ThemeAwareHeader({
                   alt=""
                   className="w-4 h-4"
                 />
-                <span>{languages.find((l) => l.code === locale)?.display_name || locale}</span>
+                <span>{switcherLanguages.find((l) => l.code === locale)?.display_name || locale}</span>
                 <svg
                   className={`w-4 h-4 transition-transform duration-200 ${langOpen ? 'rotate-180' : ''}`}
                   fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -360,7 +382,7 @@ export default function ThemeAwareHeader({
                 </svg>
               </button>
               <AnimatePresence>
-                {langOpen && (
+                {langOpen && switcherLanguages.length > 1 && (
                   <motion.div
                     initial={{ opacity: 0, y: -8, scale: 0.97 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -371,7 +393,7 @@ export default function ThemeAwareHeader({
                   >
                     <div className="dropdown-glass overflow-hidden rounded-lg">
                       <div className="py-1">
-                        {languages.map((l) => (
+                        {switcherLanguages.map((l) => (
                           <button
                             key={l.id}
                             type="button"
