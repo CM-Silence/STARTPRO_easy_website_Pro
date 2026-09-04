@@ -5,7 +5,7 @@ import { TemplateComponent } from '@/types/templates'
 import { HoverFX } from '@/components/motion'
 import { grabMotionSettings } from '@/styles/motion-presets'
 import { newsApi } from '@/utils/api'
-import { getCachedData, registerSource, unregisterSource } from '@/utils/dataCache'
+import { getCachedData, registerSource, unregisterSource, onCacheChanged } from '@/utils/dataCache'
 import { useLocale } from '@/i18n/LocaleProvider'
 import { useTranslation } from 'react-i18next'
 import type { News } from '@/types'
@@ -71,6 +71,12 @@ export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ co
     })
     return () => unregisterSource(newsCacheKey)
   }, [isEditor, locale, newsCacheKey])
+
+  // 最新新闻缓存被后台重新拉取（内容已变）后，重跑取数（getCachedData 会立即返回缓存，不阻塞）
+  useEffect(() => {
+    if (isEditor) return
+    return onCacheChanged(newsCacheKey, () => setRefreshTick((t) => t + 1))
+  }, [isEditor, newsCacheKey])
 
   useEffect(() => {
     let cancelled = false

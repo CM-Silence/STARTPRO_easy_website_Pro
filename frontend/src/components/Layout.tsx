@@ -11,7 +11,7 @@ import BackgroundRenderer from '@/components/theme-backgrounds/BackgroundRendere
 import { defaultTheme, getThemeById, resolveBackgroundEffect, type ThemeBackgroundChoice } from '@/styles/themes'
 import { navigationApi } from '@/utils/api'
 import { scrollToTop as smoothScrollTop } from '@/utils/lenis'
-import { getCachedData, registerSource } from '@/utils/dataCache'
+import { getCachedData, registerSource, onCacheChanged } from '@/utils/dataCache'
 import SmoothScroll from '@/components/SmoothScroll'
 import type { NavigationItem } from '@/types'
 import type { NavItem } from '@/types/navigation'
@@ -50,7 +50,14 @@ export default function Layout({
   const { t } = useTranslation('common')
   const { locale } = useLocale()
   const [navigationItems, setNavigationItems] = React.useState<NavItem[]>([])
+  const [navTick, setNavTick] = React.useState(0)
   const providedNavigation = (headerProps as any)?.navigation
+
+  // 导航缓存被后台重新拉取（内容已变）后，重跑取数（getCachedData 会立即返回缓存，不阻塞）
+  React.useEffect(() => {
+    if (providedNavigation) return
+    return onCacheChanged(`navigation:${locale}`, () => setNavTick((t) => t + 1))
+  }, [providedNavigation, locale])
 
   React.useEffect(() => {
     if (providedNavigation) return
@@ -103,7 +110,7 @@ export default function Layout({
     return () => {
       mounted = false
     }
-  }, [providedNavigation, locale])
+  }, [providedNavigation, locale, navTick])
 
   const themeId = settings?.site_theme || defaultTheme.id
   const activeTheme = useMemo(() => getThemeById(themeId), [themeId])

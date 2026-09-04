@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { settingsApi } from '@/utils/api'
-import { getCachedData, registerSource } from '@/utils/dataCache'
+import { getCachedData, registerSource, onCacheChanged } from '@/utils/dataCache'
 import type { Settings } from '@/types'
 import { setCustomThemePalette } from '@/styles/themes'
 import { getDefaultFooterLayout, getDefaultFooterSocialLinks } from '@/constants/footerDefaults'
@@ -168,6 +168,17 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const refreshSettings = async () => {
     await fetchSettings()
   }
+
+  // ref 注入，供「缓存后台刷新」回调读取最新的 fetchSettings（避免过期闭包）
+  const fetchSettingsRef = useRef(fetchSettings)
+  fetchSettingsRef.current = fetchSettings
+
+  // 站点设置缓存被后台重新拉取（内容已变）后，自动重读并套用最新设置
+  useEffect(() => {
+    return onCacheChanged(`settings:${locale}`, () => {
+      void fetchSettingsRef.current()
+    })
+  }, [locale])
 
   useEffect(() => {
     fetchSettings()

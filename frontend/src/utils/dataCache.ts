@@ -86,6 +86,7 @@ function getContentStatus(lang: string): Promise<ContentStatus> {
 // ---------- 核心取数 ----------
 
 const inFlight = new Map<string, Promise<unknown>>()
+const revalidating = new Set<string>()
 
 interface GetCachedDataOptions<T> {
   key: string
@@ -94,48 +95,58 @@ interface GetCachedDataOptions<T> {
   fetcher: () => Promise<T>
 }
 
-export function getCachedData<T>(options: GetCachedDataOptions<T>): Promise<T> {
+/**
+ * 后台校验版本（stale-while-revalidate）：
+ * 有缓存时先立即返回缓存渲染，本函数在后台比对 /content/status；
+ * 内容未变则不动；已变则重拉全量并刷新缓存（写缓存会触发 cache-changed，消费点据此自动上屏新数据）。
+ * 网络失败标记弱网（给出「拉取最新数据失败」横幅）；永不抛出，避免未处理 Promise。
+ */
+function backgroundRevalidate<T>(options: GetCachedDataOptions<T>, initialVersion: string | null) {
   const { key, entity, lang, fetcher } = options
-  const pending = inFlight.get(key)
-  if (pending) return pending as Promise<T>
+  if (revalidating.has(key)) return
+  revalidating.add(key)
 
-  const promise = (async (): Promise<T> => {
-    const entry = readCacheKey<T>(key)
-
-    if (!entry) {
-      // 首次：全量拉取，尽力记录基线版本
-      const data = await fetcher()
-      const status = await getContentStatus(lang).catch(() => null)
-      writeCacheKey(key, { data, version: status?.[entity] ?? null, cachedAt: Date.now() })
-      return data
-    }
-
-    // 有缓存：先比对版本
+  void (async () => {
     let status: ContentStatus | null
     try {
       status = await getContentStatus(lang)
     } catch {
-      // 弱网：连版本接口都失败 → 用旧缓存 + 标记弱网
       markStale()
-      return entry.data
+      return
     }
-
-    const upToDate = !!status[entity] && entry.version === status[entity]
-    if (upToDate) {
-      // 内容未变：直接用缓存，不发全量请求
-      return entry.data
-    }
-
-    // 内容已变：重新拉取
+    // 内容未变：无需重拉（不发全量请求）
+    if (!!status[entity] && initialVersion === status[entity]) return
     try {
       const data = await fetcher()
       writeCacheKey(key, { data, version: status[entity] ?? null, cachedAt: Date.now() })
-      return data
     } catch {
-      // 全量拉取也失败（极端弱网）：用旧缓存 + 标记弱网
       markStale()
-      return entry.data
     }
+  })().finally(() => {
+    revalidating.delete(key)
+  })
+}
+
+export function getCachedData<T>(options: GetCachedDataOptions<T>): Promise<T> {
+  const { key, entity, lang, fetcher } = options
+
+  const entry = readCacheKey<T>(key)
+
+  // 有缓存：立即返回缓存（弱网时不被版本校验拖慢），后台再校验+必要时重拉刷新缓存。
+  if (entry) {
+    backgroundRevalidate(options, entry.version)
+    return Promise.resolve(entry.data)
+  }
+
+  // 无缓存：必须等网络取数（此时无兜底可用）；并发去重，避免同 key 重复拉取。
+  const pending = inFlight.get(key)
+  if (pending) return pending as Promise<T>
+
+  const promise = (async (): Promise<T> => {
+    const data = await fetcher()
+    const status = await getContentStatus(lang).catch(() => null)
+    writeCacheKey(key, { data, version: status?.[entity] ?? null, cachedAt: Date.now() })
+    return data
   })()
 
   inFlight.set(key, promise)
