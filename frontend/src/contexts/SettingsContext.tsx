@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { settingsApi } from '@/utils/api'
+import { getCachedData, registerSource } from '@/utils/dataCache'
 import type { Settings } from '@/types'
 import { setCustomThemePalette } from '@/styles/themes'
 import { getDefaultFooterLayout, getDefaultFooterSocialLinks } from '@/constants/footerDefaults'
@@ -37,7 +38,25 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const fetchSettings = async () => {
     try {
       setIsLoading(true)
-      const response = await settingsApi.get(locale)
+
+      // 登记数据源注册表，使全局「刷新」按钮能命中站点设置强制重拉；刷新成功后回到本流程兜底缓存。
+      registerSource({
+        key: `settings:${locale}`,
+        entity: 'settings',
+        lang: locale,
+        fetcher: () => settingsApi.get(locale),
+        onFresh: () => {
+          void fetchSettings()
+        }
+      })
+
+      // 走条件更新式缓存：无缓存/内容已变→拉新；内容未变→用缓存；弱网→回退旧缓存并标记。
+      const response = await getCachedData({
+        key: `settings:${locale}`,
+        entity: 'settings',
+        lang: locale,
+        fetcher: () => settingsApi.get(locale)
+      })
 
       if (response.success) {
         const { site_record: _removedRecord, nav_layout_style: _removedLayout, theme_overrides: _removedOverrides, ...rest } =

@@ -11,6 +11,7 @@ import BackgroundRenderer from '@/components/theme-backgrounds/BackgroundRendere
 import { defaultTheme, getThemeById, resolveBackgroundEffect, type ThemeBackgroundChoice } from '@/styles/themes'
 import { navigationApi } from '@/utils/api'
 import { scrollToTop as smoothScrollTop } from '@/utils/lenis'
+import { getCachedData, registerSource } from '@/utils/dataCache'
 import SmoothScroll from '@/components/SmoothScroll'
 import type { NavigationItem } from '@/types'
 import type { NavItem } from '@/types/navigation'
@@ -57,7 +58,24 @@ export default function Layout({
     let mounted = true
     const fetchNavigation = async () => {
       try {
-        const navResponse = await navigationApi.getAll(locale)
+        // 登记数据源注册表，使全局「刷新」按钮能命中导航强制重拉；刷新成功后回到本流程兜底缓存。
+        registerSource({
+          key: `navigation:${locale}`,
+          entity: 'navigation',
+          lang: locale,
+          fetcher: () => navigationApi.getAll(locale),
+          onFresh: () => {
+            void fetchNavigation()
+          }
+        })
+
+        // 走条件更新式缓存：无缓存/内容已变→拉新；内容未变→用缓存；弱网→回退旧缓存并标记。
+        const navResponse = await getCachedData({
+          key: `navigation:${locale}`,
+          entity: 'navigation',
+          lang: locale,
+          fetcher: () => navigationApi.getAll(locale)
+        })
         if (!mounted) return
 
         if (navResponse.success && Array.isArray(navResponse.data) && navResponse.data.length) {

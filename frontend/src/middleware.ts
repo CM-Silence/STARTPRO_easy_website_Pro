@@ -20,7 +20,8 @@ const EXCLUDED_PREFIXES = [
   '/uploads',
   '/system-default',
   '/ck-umd',
-  '/favicon.ico'
+  '/favicon.ico',
+  '/sw.js'
 ]
 
 async function getLangs(origin: string): Promise<LangMap> {

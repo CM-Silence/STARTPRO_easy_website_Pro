@@ -270,14 +270,14 @@ export const BannerCarouselPreview: React.FC<{ component: TemplateComponent }> =
                 className={`absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 ${arrowCls} p-2 rounded-full shadow-sm transition-colors z-20 banner-arrow banner-arrow-left`}
                 aria-label="上一张"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
               </button>
               <button
                 onClick={goNext}
                 className={`absolute right-3 md:right-4 top-1/2 transform -translate-y-1/2 ${arrowCls} p-2 rounded-full shadow-sm transition-colors z-20 banner-arrow banner-arrow-right`}
                 aria-label="下一张"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
               </button>
             </>
           )}

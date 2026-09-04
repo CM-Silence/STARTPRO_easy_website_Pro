@@ -17,6 +17,7 @@ import { applyTheme, getThemeById, setCustomThemePalette } from '@/styles/themes
 import { applyIsolatedThemeVariables } from '@/styles/themeComponents'
 import { applyFont } from '@/styles/fontLoader'
 import { Cover } from '@/components/Cover'
+import StaleDataBanner from '@/components/StaleDataBanner'
 import type { PageTransitionChoice } from '@/types'
 
 // 内部组件来使用useMetaInfo Hook
@@ -45,6 +46,22 @@ function AppContent({ Component, pageProps }: AppProps) {
     })
   }, [settings?.site_font, settings?.site_font_custom_name, settings?.site_font_url])
 
+  // 注册图片缓存 Service Worker（客户端；懒加载于页面完全加载后，避免与首屏资源竞争）
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+    const register = () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // 注册失败（隐私模式/浏览器禁用等）静默降级，不影响页面
+      })
+    }
+    if (document.readyState === 'complete') {
+      register()
+    } else {
+      window.addEventListener('load', register)
+    }
+    return () => window.removeEventListener('load', register)
+  }, [])
+
   return (
     <>
       <Component {...pageProps} />
@@ -70,6 +87,7 @@ function AppContent({ Component, pageProps }: AppProps) {
         }}
       />
       <Cover enabled={transitionEnabled} />
+      <StaleDataBanner />
     </>
   )
 }

@@ -5,6 +5,7 @@ import { TemplateComponent } from '@/types/templates'
 import { HoverFX } from '@/components/motion'
 import { grabMotionSettings } from '@/styles/motion-presets'
 import { newsApi } from '@/utils/api'
+import { getCachedData, registerSource, unregisterSource } from '@/utils/dataCache'
 import { useLocale } from '@/i18n/LocaleProvider'
 import { useTranslation } from 'react-i18next'
 import type { News } from '@/types'
@@ -50,6 +51,26 @@ export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ co
   // 数据驱动：latest 从新闻中心取 N 条；custom 按所选 newsId 取
   const [items, setItems] = useState<(News | null)[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshTick, setRefreshTick] = useState(0)
+
+  // 最新新闻数量：latest 模式按 articles 数量（默认 3）。cacheKey 带上 count 与 pinFirst，
+  // 避免页面上多个不同展示数量/排序的实例共享同一条缓存而互相串数据。
+  const newsCount = articles && articles.length > 0 ? articles.length : 3
+  const newsPinFirst = pinFirst !== false
+  const newsCacheKey = `news-latest:${locale}:${newsCount}:${newsPinFirst ? 'p' : 'np'}`
+
+  // 公开页登记「最新新闻」数据源，使全局「刷新」按钮能命中；编辑器画布不缓存不做登记
+  useEffect(() => {
+    if (isEditor) return
+    registerSource({
+      key: newsCacheKey,
+      entity: 'news',
+      lang: locale,
+      fetcher: () => newsApi.latest({ limit: newsCount, pinFirst: newsPinFirst, lang: locale }) as any,
+      onFresh: () => setRefreshTick((t) => t + 1)
+    })
+    return () => unregisterSource(newsCacheKey)
+  }, [isEditor, locale, newsCacheKey])
 
   useEffect(() => {
     let cancelled = false
@@ -74,9 +95,17 @@ export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ co
             setItems(articles.map(() => null))
           }
         } else {
-          const count = (articles && articles.length > 0 ? articles.length : 3)
-          const res = (await newsApi.latest({ limit: count, pinFirst: pinFirst !== false, lang: locale })) as any
-          if (!cancelled) setItems((res.success ? res.data : []) || [])
+          const count = newsCount
+          // 公开页走条件更新式缓存；后台编辑器画布直接用最新数据（不缓存）
+          const res = isEditor
+            ? await newsApi.latest({ limit: count, pinFirst: newsPinFirst, lang: locale })
+            : await getCachedData({
+                key: newsCacheKey,
+                entity: 'news',
+                lang: locale,
+                fetcher: () => newsApi.latest({ limit: count, pinFirst: newsPinFirst, lang: locale })
+              })
+          if (!cancelled) setItems((res?.success ? res.data : []) || [])
         }
       } catch {
         if (!cancelled) setItems([])
@@ -88,7 +117,7 @@ export const NewsListPreview: React.FC<{ component: TemplateComponent }> = ({ co
     return () => {
       cancelled = true
     }
-  }, [viewMode, pinFirst, articles, locale])
+  }, [viewMode, pinFirst, articles, locale, refreshTick, isEditor])
 
   const parsedPerRow = Number.isFinite(Number(cardsPerRow)) ? Math.max(1, Math.min(6, Number(cardsPerRow))) : 3
   const gridCols =
