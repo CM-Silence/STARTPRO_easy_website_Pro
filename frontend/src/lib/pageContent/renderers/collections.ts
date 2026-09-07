@@ -14,6 +14,31 @@ export const renderFeatureGrid = (component: any): string => {
 
 export const renderFeatureGridLarge = renderFeatureGrid
 
+export const renderFeatureGridMulti = (component: any): string => {
+  const { props = {} } = component
+  const { title, subtitle, features = [] } = props
+  const items = features
+    .map((f: any) => {
+      const subItems = (f.items || [])
+        .map(
+          (item: any) =>
+            `<li>${item.icon && !item.icon.trim().startsWith('<svg')
+              ? `<img class="feature-grid-multi__icon" src="${escapeHtml(item.icon)}" alt="" />`
+              : ''}${escapeHtml(item.text || '')}</li>`
+        )
+        .join('')
+      const icon = f.icon && !f.icon.trim().startsWith('<svg')
+        ? `<img class="feature-grid-multi__icon" src="${escapeHtml(f.icon)}" alt="" />`
+        : ''
+      return `<div class="feature-item feature-grid-multi__card">
+      <h3 class="feature-grid-multi__title">${icon}${escapeHtml(f.title || '')}</h3>
+      <ul class="feature-grid-multi__list">${subItems}</ul>
+    </div>`
+    })
+    .join('')
+  return wrapSection('feature-grid-multi', `${renderHeading('h2', title)}${renderParagraph(subtitle)}<div class="feature-grid__items">${items}</div>`)
+}
+
 export const renderLogoWall = (component: any): string => {
   const { props = {} } = component
   const { logos = [] } = props

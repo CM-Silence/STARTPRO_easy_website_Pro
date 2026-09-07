@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 
 interface TextBlockEditorProps {
   content?: string
@@ -19,6 +20,8 @@ const TOOLBAR_ALLOW_LIST = new Set([
   'numberedList',
   'todoList',
   'emoji',
+  'fontSize',
+  'fontColor',
   '|'
 ])
 
@@ -188,43 +191,43 @@ const TextBlockEditor: React.FC<TextBlockEditorProps> = ({ content, onContentCha
       <p className="text-xs text-theme-textSecondary">富文本内容建议在弹窗中编辑。</p>
 
       <div className={`fixed inset-0 z-50 ${isOpen ? '' : 'hidden'}`}>
-        <div
-          className="absolute inset-0 bg-color-surface"
-          onClick={() => setIsOpen(false)}
-        />
-        <div className="absolute inset-0 flex items-center justify-center p-4">
-          <div className="text-block-editor-modal w-full max-w-4xl rounded-xl border border-theme-divider bg-theme-surface shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-theme-divider">
-              <h3 className="text-sm font-semibold text-theme-textPrimary">编辑文本区块内容</h3>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="text-theme-textSecondary hover:text-theme-textPrimary"
-              >
-                关闭
-              </button>
-            </div>
-            <div className="p-4">
+        <div className="absolute inset-0 bg-color-surface" />
+        <div className="absolute inset-0 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-theme-divider bg-theme-surface">
+            <h3 className="text-sm font-semibold text-theme-textPrimary">编辑文本区块内容</h3>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-theme-divider bg-theme-surfaceAlt text-theme-textSecondary hover:text-theme-textPrimary hover:bg-theme-surface transition-colors"
+            >
+              <X className="w-4 h-4" />
+              <span>关闭</span>
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="text-block-editor-modal mx-auto w-[50%] min-w-[360px] max-w-[900px] min-h-[75vh] rounded-lg border border-theme-divider bg-theme-surface shadow-2xl overflow-hidden flex flex-col">
               {editorError ? (
-                <textarea
-                  value={content || ''}
-                  onChange={(e) => onContentChange(e.target.value)}
-                  rows={10}
-                  className="w-full px-3 py-2 border border-theme-divider bg-theme-surfaceAlt theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent resize-none"
-                  placeholder="请输入内容（支持 HTML）"
-                />
+                <div className="p-4 flex-1">
+                  <textarea
+                    value={content || ''}
+                    onChange={(e) => onContentChange(e.target.value)}
+                    rows={10}
+                    className="w-full px-3 py-2 border border-theme-divider bg-theme-surfaceAlt theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent resize-none"
+                    placeholder="请输入内容（支持 HTML）"
+                  />
+                  <p className="text-xs text-theme-textSecondary mt-2">{editorError}</p>
+                </div>
               ) : (
                 <>
                   {!editorReady && (
-                    <div className="text-xs text-theme-textSecondary mb-2">正在加载富文本编辑器...</div>
+                    <div className="text-xs text-theme-textSecondary mb-2 px-2 pt-2">正在加载富文本编辑器...</div>
                   )}
                   <div
                     ref={editorHostRef}
-                    className="docs-ckeditor min-h-[320px] bg-theme-surfaceAlt rounded-md p-2 min-w-0"
+                    className="docs-ckeditor flex-1 bg-theme-surfaceAlt p-2 min-w-0"
                   />
                 </>
               )}
-              {editorError && <p className="text-xs text-theme-textSecondary mt-2">{editorError}</p>}
             </div>
           </div>
         </div>

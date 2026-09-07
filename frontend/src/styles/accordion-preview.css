@@ -1,0 +1,243 @@
+/* 手风琴组件（accordion）前台样式
+   严格按参考实现（joinus 页岗位列表手风琴）复刻，类名加 pa- 前缀避免全局冲突 */
+
+/* ----- 折叠卡片 ----- */
+.pa-job-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+/* 折叠动画：padding/border 全部在内层包裹元素上，外层无 padding，
+   保证 max-height: 0 能完全收拢（border-box 下 max-height 压不掉自身 padding） */
+.pa-job-card .pa-job-body {
+  display: block;
+  max-height: 2000px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.4s ease;
+}
+.pa-job-card.pa-collapsed .pa-job-body {
+  max-height: 0 !important;
+  opacity: 0 !important;
+}
+.pa-job-body .pa-job-body-inner {
+  padding: 0 40px 36px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* header */
+.pa-job-header {
+  padding: 28px 40px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  transition: background 0.2s;
+}
+.pa-job-header:hover {
+  background: #f8fafc;
+}
+.pa-job-header-left {
+  flex: 1;
+  min-width: 0;
+}
+.pa-job-header-left .pa-job-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.pa-job-header-left .pa-job-title .pa-job-title-icon {
+  color: #3b82f6;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pa-job-header-left .pa-job-title-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.pa-job-header-left .pa-job-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
+}
+.pa-job-header-left .pa-job-meta .pa-job-meta-item {
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pa-job-header-left .pa-job-meta .pa-job-meta-item .pa-job-meta-icon {
+  color: #3b82f6;
+  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pa-job-header-left .pa-job-meta .pa-job-meta-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.pa-job-header-arrow {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f1f5f9;
+  transition: all 0.3s;
+  margin-top: 4px;
+}
+.pa-job-header-arrow svg {
+  width: 14px;
+  height: 14px;
+  color: #64748b;
+  transition: transform 0.4s ease;
+}
+.pa-job-card:not(.pa-collapsed) .pa-job-header-arrow svg {
+  transform: rotate(180deg);
+}
+
+/* body 内容排版：与富文本编辑器（.ck-content）样式保持一致 */
+.pa-job-body {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-text-primary, #0f172a);
+}
+.pa-job-body p:first-of-type {
+  margin-top: 20px;
+}
+.pa-job-body p {
+  margin: 0 0 1rem;
+}
+.pa-job-body h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 1rem;
+}
+.pa-job-body h2 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 1.25rem 0 0.75rem;
+}
+.pa-job-body h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 1rem 0 0.5rem;
+}
+.pa-job-body ul,
+.pa-job-body ol {
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+}
+.pa-job-body ul {
+  list-style: disc;
+}
+.pa-job-body ol {
+  list-style: decimal;
+}
+.pa-job-body a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+}
+.pa-job-body pre {
+  background: rgba(var(--color-text-muted-rgb), 0.08);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  overflow: auto;
+}
+.pa-job-body code {
+  font-family: 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.95em;
+}
+.pa-job-body .info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 20px;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+.pa-job-body .info-row .info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #475569;
+}
+.pa-job-body .info-row .info-item i,
+.pa-job-body .info-row .info-item svg {
+  color: #3b82f6;
+  font-size: 15px;
+  width: 15px;
+  height: 15px;
+}
+.pa-job-body .info-row .info-item strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+/* 小尺寸图标（素材 URL / 内联 SVG / emoji）：标题图标 16px，元信息图标 15px */
+.pa-job-title-icon .pa-icon-img,
+.pa-job-title-icon .pa-icon-mask,
+.pa-job-title-icon .pa-icon-svg svg {
+  width: 16px;
+  height: 16px;
+}
+.pa-job-meta-icon .pa-icon-img,
+.pa-job-meta-icon .pa-icon-mask,
+.pa-job-meta-icon .pa-icon-svg svg {
+  width: 15px;
+  height: 15px;
+}
+.pa-job-title-icon .pa-icon-img,
+.pa-job-meta-icon .pa-icon-img {
+  object-fit: contain;
+  display: inline-block;
+}
+.pa-job-title-icon .pa-icon-mask,
+.pa-job-meta-icon .pa-icon-mask {
+  display: inline-block;
+}
+.pa-job-title-icon .pa-icon-emoji {
+  font-size: 16px;
+  line-height: 1;
+}
+.pa-job-meta-icon .pa-icon-emoji {
+  font-size: 15px;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .pa-job-header { padding: 20px; }
+  .pa-job-header-left .pa-job-title { font-size: 15px; }
+  .pa-job-body .pa-job-body-inner { padding: 0 20px 24px; }
+  .pa-job-body p:first-of-type {
+    margin-top: 16px;
+  }
+}

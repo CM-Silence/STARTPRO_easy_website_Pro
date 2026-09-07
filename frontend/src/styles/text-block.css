@@ -215,5 +215,5 @@
 }
 
 .text-block-editor-modal .ck-editor__editable[data-root='main'] {
-  min-height: 320px;
+  min-height: 60vh;
 }

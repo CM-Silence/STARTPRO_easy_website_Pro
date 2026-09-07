@@ -20,14 +20,14 @@ export const IconColorControls: React.FC<IconColorControlsProps> = ({
   const colorValue = iconColor?.trim() || DEFAULT_ICON_COLOR
 
   return (
-    <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+    <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-[200px]">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
             <Palette className="w-4 h-4 text-tech-accent" />
-            <h4 className="font-medium text-gray-900 dark:text-white">图标颜色</h4>
+            <h4 className="font-medium text-gray-900">图标颜色</h4>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-500 break-words">
             统一覆盖当前组件的图标颜色，支持 currentColor 的 SVG
           </p>
         </div>
@@ -35,10 +35,10 @@ export const IconColorControls: React.FC<IconColorControlsProps> = ({
           <button
             type="button"
             onClick={() => onModeChange('default')}
-            className={`px-3 py-1 text-xs rounded-full border ${
+            className={`px-3 py-1 text-xs whitespace-nowrap rounded-full border ${
               iconColorMode === 'default'
                 ? 'bg-tech-accent text-white border-tech-accent'
-                : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-tech-accent hover:text-tech-accent'
+                : 'text-gray-600 border-gray-300 hover:border-tech-accent hover:text-tech-accent'
             }`}
           >
             保持原色
@@ -46,10 +46,10 @@ export const IconColorControls: React.FC<IconColorControlsProps> = ({
           <button
             type="button"
             onClick={() => onModeChange('custom')}
-            className={`px-3 py-1 text-xs rounded-full border ${
+            className={`px-3 py-1 text-xs whitespace-nowrap rounded-full border ${
               iconColorMode === 'custom'
                 ? 'bg-tech-accent text-white border-tech-accent'
-                : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-tech-accent hover:text-tech-accent'
+                : 'text-gray-600 border-gray-300 hover:border-tech-accent hover:text-tech-accent'
             }`}
           >
             统一颜色
@@ -64,13 +64,13 @@ export const IconColorControls: React.FC<IconColorControlsProps> = ({
               type="color"
               value={colorValue}
               onChange={(e) => onColorChange(e.target.value)}
-              className="w-14 h-10 rounded border border-gray-300 dark:border-gray-600 p-0"
+              className="w-14 h-10 rounded border border-gray-300 p-0"
             />
             <input
               type="text"
               value={colorValue}
               onChange={(e) => onColorChange(e.target.value)}
-              className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
+              className="w-32 px-3 py-2 border border-gray-300 rounded theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
               placeholder="#0ea5e9"
             />
           </div>

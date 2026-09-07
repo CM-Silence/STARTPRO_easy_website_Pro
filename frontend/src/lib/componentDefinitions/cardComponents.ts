@@ -1,5 +1,5 @@
 import { ComponentDefinition } from '@/types/templates'
-import { FeatureGridLargePreview, FeatureGridPreview, NewsIndexPreview, NewsListPreview, PricingCardsPreview, ProductShowcaseCardPreview, StatsSectionPreview, TeamGridPreview, TestimonialsPreview, TimelinePreview } from '@/components/PageBuilder/previews'
+import { FeatureGridLargePreview, FeatureGridMultiPreview, FeatureGridPreview, NewsIndexPreview, NewsListPreview, PricingCardsPreview, ProductShowcaseCardPreview, StatsSectionPreview, TeamGridPreview, TestimonialsPreview, TimelinePreview } from '@/components/PageBuilder/previews'
 
 export const cardComponents: ComponentDefinition[] = [
   {
@@ -112,6 +112,64 @@ export const cardComponents: ComponentDefinition[] = [
         ] }
       ],
       previewComponent: FeatureGridPreview
+    },
+
+  {
+      type: 'feature-grid-multi',
+      name: '功能网格-多行',
+      description: '每个卡片内展示图标、主标题与多条子功能列表，适合场景/能力分组展示',
+      icon: '🔲',
+      category: '卡片组件',
+      defaultProps: {
+        iconColorMode: 'default',
+        iconColor: '#0ea5e9',
+
+        title: '核心能力',
+        subtitle: '我们提供的主要功能和服务',
+        cardsPerRow: 3,
+        features: [
+          {
+            icon: '✨',
+            title: '功能一',
+            items: [
+              { icon: '', text: '子功能一' },
+              { icon: '', text: '子功能二' },
+              { icon: '', text: '子功能三' }
+            ]
+          },
+          {
+            icon: '🚀',
+            title: '功能二',
+            items: [
+              { icon: '', text: '子功能一' },
+              { icon: '', text: '子功能二' }
+            ]
+          },
+          {
+            icon: '💡',
+            title: '功能三',
+            items: [
+              { icon: '', text: '子功能一' }
+            ]
+          }
+        ],
+        widthOption: 'full',
+        backgroundColorOption: 'default'
+      },
+      editableFields: [
+        { key: 'title', label: '主标题', type: 'text', value: '' },
+        { key: 'subtitle', label: '副标题', type: 'text', value: '' },
+        { key: 'cardsPerRow', label: '每行卡片数', type: 'text', value: '3' },
+        { key: 'widthOption', label: '宽度选项', type: 'text', value: 'full', options: [
+          { label: '全宽', value: 'full' },
+          { label: '标准宽度', value: 'standard' }
+        ] },
+        { key: 'backgroundColorOption', label: '背景色选项', type: 'text', value: 'default', options: [
+          { label: '默认背景色', value: 'default' },
+          { label: '透明背景色', value: 'transparent' }
+        ] }
+      ],
+      previewComponent: FeatureGridMultiPreview
     },
 
   {

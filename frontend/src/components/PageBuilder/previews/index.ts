@@ -26,6 +26,8 @@ import { FeatureGridLargePreview } from './FeatureGridLargePreview'
 import { VideoPlayerPreview } from './VideoPlayerPreview'
 import { RawHtmlPreview } from './RawHtmlPreview'
 import { ProductShowcaseCardPreview } from './ProductShowcaseCardPreview'
+import { FeatureGridMultiPreview } from './FeatureGridMultiPreview'
+import { AccordionPreview } from './AccordionPreview'
 
 export {
   HeroPreview,
@@ -55,7 +57,9 @@ export {
   FeatureGridLargePreview,
   VideoPlayerPreview,
   RawHtmlPreview,
-  ProductShowcaseCardPreview
+  ProductShowcaseCardPreview,
+  FeatureGridMultiPreview,
+  AccordionPreview
 }
 
 export const componentPreviews = {
@@ -86,5 +90,7 @@ export const componentPreviews = {
   'table': TablePreview,
   'video-player': VideoPlayerPreview,
   'raw-html': RawHtmlPreview,
-  'product-showcase-card': ProductShowcaseCardPreview
+  'product-showcase-card': ProductShowcaseCardPreview,
+  'feature-grid-multi': FeatureGridMultiPreview,
+  'accordion': AccordionPreview
 }

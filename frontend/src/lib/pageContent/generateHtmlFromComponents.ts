@@ -1,10 +1,10 @@
 import { RenderMap } from '@/types/pageContent'
 import { renderHero, renderTextBlock, renderImageBlock, renderImageText, renderImageTextHorizontal, renderBannerCarousel, renderTable } from './renderers/basic'
-import { renderFeatureGrid, renderFeatureGridLarge, renderLogoWall, renderLogoScroll, renderLinkBlock } from './renderers/collections'
+import { renderFeatureGrid, renderFeatureGridLarge, renderFeatureGridMulti, renderLogoWall, renderLogoScroll, renderLinkBlock } from './renderers/collections'
 import { renderPricingCards } from './renderers/pricing'
 import { renderTeamGrid, renderTestimonials } from './renderers/team'
 import { renderCallToAction } from './renderers/cta'
-import { renderContactForm, renderFaqSection } from './renderers/forms'
+import { renderContactForm, renderFaqSection, renderAccordion } from './renderers/forms'
 import { renderStatsSection, renderTimeline, renderCyberTimeline } from './renderers/statsTimeline'
 import { renderCyberShowcase, renderCyberSuperCard } from './renderers/cyber'
 import { renderNewsList, renderVideoPlayer } from './renderers/newsVideo'
@@ -20,11 +20,13 @@ const renderers: RenderMap = {
   'table': renderTable,
   'feature-grid': renderFeatureGrid,
   'feature-grid-large': renderFeatureGridLarge,
+  'feature-grid-multi': renderFeatureGridMulti,
   'pricing-cards': renderPricingCards,
   'contact-form': renderContactForm,
   'team-grid': renderTeamGrid,
   'call-to-action': renderCallToAction,
   'faq-section': renderFaqSection,
+  'accordion': renderAccordion,
   'stats-section': renderStatsSection,
   'timeline': renderTimeline,
   'cyber-timeline': renderCyberTimeline,

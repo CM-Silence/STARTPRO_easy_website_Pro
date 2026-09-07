@@ -250,7 +250,7 @@ export const uploadApi = {
   file: (file: File, onProgress?: (progress: number) => void, folder?: string) =>
     api.upload('/upload/file', file, onProgress, folder ? { folder } : undefined),
 
-  getFiles: (params?: { type?: string; folder?: string; page?: number; limit?: number }) =>
+  getFiles: (params?: { type?: string; folder?: string; page?: number; limit?: number; search?: string }) =>
     api.get('/upload/files', { params }),
 
   getFolders: () => api.get('/upload/folders'),

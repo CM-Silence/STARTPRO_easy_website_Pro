@@ -108,11 +108,13 @@ const detectFileType = (ext = '') => {
 
 router.get('/files', async (req, res) => {
   try {
-    let { folder = 'root', page = 1, limit = 40 } = req.query
+    let { folder = 'root', page = 1, limit = 40, search = '' } = req.query
 
     const normalizedLimit = normalizeLimit(limit)
     const normalizedPage = normalizePage(page)
     const offset = (normalizedPage - 1) * normalizedLimit
+
+    const searchTerm = (typeof search === 'string' ? search : '').trim().toLowerCase()
 
     // 确定目标目录
     let targetDir = systemDefaultDir
@@ -164,7 +166,40 @@ router.get('/files', async (req, res) => {
       return files
     }
 
-    const files = getFilesInDirectory(targetDir, baseUrl)
+    // 递归收集目录及全部子目录下的文件绝对路径（搜索模式用）
+    const collectFilesRecursive = (dir) => {
+      const out = []
+      if (!fs.existsSync(dir)) return out
+      for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, item.name)
+        if (item.isDirectory()) {
+          out.push(...collectFilesRecursive(fullPath))
+        } else {
+          out.push(fullPath)
+        }
+      }
+      return out
+    }
+
+    const files = searchTerm
+      ? // 搜索模式：递归当前目录及全部子目录，全量过滤后再分页
+        collectFilesRecursive(targetDir)
+          .filter((fullPath) => path.basename(fullPath).toLowerCase().includes(searchTerm))
+          .map((fullPath) => {
+            const relativePath = path.relative(systemDefaultDir, fullPath).split(path.sep).join('/')
+            const stats = fs.statSync(fullPath)
+            const extension = path.extname(fullPath).substring(1).toLowerCase().replace('.', '') || 'unknown'
+            return {
+              name: path.basename(fullPath),
+              path: relativePath,
+              url: `/uploads/system-default/${relativePath}`,
+              size: stats.size,
+              modified: stats.mtime,
+              extension,
+              type: detectFileType(extension)
+            }
+          })
+      : getFilesInDirectory(targetDir, baseUrl)
 
     // 按修改时间排序（最新在前）
     files.sort((a, b) => new Date(b.modified) - new Date(a.modified))

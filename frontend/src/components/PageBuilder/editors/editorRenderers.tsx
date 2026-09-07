@@ -18,6 +18,8 @@ import TableEditorLauncher from './TableEditorLauncher'
 import ProductShowcaseCardEditor from './ProductShowcaseCardEditor'
 import TextBlockEditor from './TextBlockEditor'
 import HeroEditor from './HeroEditor'
+import FeatureGridMultiEditor from './FeatureGridMultiEditor'
+import AccordionEditor from './AccordionEditor'
 
 export type CustomEditorProps = {
   component: TemplateComponent
@@ -25,6 +27,7 @@ export type CustomEditorProps = {
   handleFieldChange: (key: string, value: any) => void
   handleArrayFieldChange: (arrayKey: string, index: number, fieldKey: string, value: any) => void
   openAssetPickerWithValue: (target: AssetPickerTarget, currentValue?: string) => void
+  openNestedAssetPicker?: (handler: (asset: { url: string }) => void, currentValue?: string) => void
   addArrayItem: (arrayKey: string, template: any) => void
   removeArrayItem: (arrayKey: string, index: number) => void
   isAssetUrl: (value?: string) => boolean
@@ -492,6 +495,103 @@ const renderNewsIndexEditor: CustomEditorRenderer = ({ component, formData, hand
   )
 }
 
+const renderFeatureGridMultiEditor: CustomEditorRenderer = ({
+  component,
+  formData,
+  handleFieldChange,
+  addArrayItem,
+  removeArrayItem,
+  openAssetPickerWithValue,
+  openNestedAssetPicker,
+  isAssetUrl,
+  isSvgMarkup
+}) => {
+  if (component.type !== 'feature-grid-multi') return null
+  const features = Array.isArray(formData.features) ? formData.features : []
+  // 嵌套数组（features[i].items[j]）不支持一层路径写回，统一整数组不可变替换
+  const mutateFeature = (index: number, fn: (feature: any) => any) => {
+    const next = [...features]
+    next[index] = fn({ ...(next[index] || {}) })
+    handleFieldChange('features', next)
+  }
+  return (
+    <FeatureGridMultiEditor
+      features={features}
+      cardsPerRow={formData.cardsPerRow}
+      onCardsPerRowChange={(value) => handleFieldChange('cardsPerRow', value)}
+      onChange={(index, key, value) => mutateFeature(index, (f) => ({ ...f, [key]: value }))}
+      onAdd={() =>
+        addArrayItem('features', {
+          icon: '✨',
+          title: '新功能',
+          items: [{ icon: '', text: '子功能内容' }]
+        })
+      }
+      onRemove={(index) => removeArrayItem('features', index)}
+      onAddSubItem={(index) => mutateFeature(index, (f) => ({ ...f, items: [...(f.items || []), { icon: '', text: '' }] }))}
+      onRemoveSubItem={(index, itemIndex) =>
+        mutateFeature(index, (f) => ({ ...f, items: (f.items || []).filter((_: any, k: number) => k !== itemIndex) }))
+      }
+      onSubItemChange={(index, itemIndex, key, value) =>
+        mutateFeature(index, (f) => ({
+          ...f,
+          items: (f.items || []).map((it: any, k: number) => (k === itemIndex ? { ...it, [key]: value } : it))
+        }))
+      }
+      openAssetPicker={openAssetPickerWithValue}
+      openNestedAssetPicker={openNestedAssetPicker!}
+      isAssetUrl={isAssetUrl}
+      isSvgMarkup={isSvgMarkup}
+    />
+  )
+}
+
+const renderAccordionEditor: CustomEditorRenderer = ({
+  component,
+  formData,
+  handleFieldChange,
+  addArrayItem,
+  removeArrayItem,
+  openAssetPickerWithValue,
+  openNestedAssetPicker
+}) => {
+  if (component.type !== 'accordion') return null
+  const items = Array.isArray(formData.items) ? formData.items : []
+  // 嵌套数组（items[i].meta[j]）不支持一层路径写回，统一整数组不可变替换
+  const mutateItem = (index: number, fn: (item: any) => any) => {
+    const next = [...items]
+    next[index] = fn({ ...(next[index] || {}) })
+    handleFieldChange('items', next)
+  }
+  return (
+    <AccordionEditor
+      items={items}
+      onAdd={() =>
+        addArrayItem('items', {
+          icon: '',
+          title: '新折叠项',
+          meta: [],
+          content: ''
+        })
+      }
+      onRemove={(index) => removeArrayItem('items', index)}
+      onChange={(index, key, value) => mutateItem(index, (it) => ({ ...it, [key]: value }))}
+      onAddMeta={(index) => mutateItem(index, (it) => ({ ...it, meta: [...(it.meta || []), { icon: '', text: '' }] }))}
+      onRemoveMeta={(index, metaIndex) =>
+        mutateItem(index, (it) => ({ ...it, meta: (it.meta || []).filter((_: any, k: number) => k !== metaIndex) }))
+      }
+      onMetaChange={(index, metaIndex, key, value) =>
+        mutateItem(index, (it) => ({
+          ...it,
+          meta: (it.meta || []).map((m: any, k: number) => (k === metaIndex ? { ...m, [key]: value } : m))
+        }))
+      }
+      openAssetPicker={openAssetPickerWithValue}
+      openNestedAssetPicker={openNestedAssetPicker!}
+    />
+  )
+}
+
 const customEditors: Partial<Record<string, CustomEditorRenderer>> = {
   'hero': renderHeroEditor,
   'video-player': renderVideoEditor,
@@ -511,7 +611,9 @@ const customEditors: Partial<Record<string, CustomEditorRenderer>> = {
   'image-text-horizontal': renderImageTextHorizontalEditor,
   'text-block': renderTextBlockEditor,
   'raw-html': renderRawHtmlEditor,
-  'product-showcase-card': renderProductShowcaseCardEditor
+  'product-showcase-card': renderProductShowcaseCardEditor,
+  'feature-grid-multi': renderFeatureGridMultiEditor,
+  'accordion': renderAccordionEditor
 }
 
 export { customEditors }

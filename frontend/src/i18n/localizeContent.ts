@@ -27,6 +27,13 @@ export function applyLinkPrefix(components: unknown, suffix: string): unknown {
         out[key] = val.map((item) =>
           item && typeof item === 'object' ? walk(item as Record<string, unknown>) : item
         )
+      } else if (typeof val === 'string') {
+        // 嵌套对象内的字符串同样处理：站内链接字段加前缀，HTML 字符串前缀其中链接
+        if (isInternalLink(val) && !val.startsWith(`/${suffix}/`)) {
+          out[key] = withPrefix(val)
+        } else {
+          out[key] = prefixHtmlInternalLinks(val, suffix)
+        }
       } else {
         out[key] = val
       }

@@ -604,12 +604,29 @@ router.post('/images', authenticateToken, requireEditor, (req, res) => {
 // 获取上传的文件列表
 router.get('/files', authenticateToken, requireEditor, async (req, res) => {
   try {
-    let { type = 'all', folder = 'root', page = 1, limit = 20 } = req.query
+    let { type = 'all', folder = 'root', page = 1, limit = 20, search = '' } = req.query
     // SVG目录显示更多文件
     if (folder === 'svg') {
       limit = 50
     }
     const offset = (page - 1) * limit
+
+    const searchTerm = (typeof search === 'string' ? search : '').trim().toLowerCase()
+
+    // 递归收集目录及全部子目录下的文件绝对路径
+    const collectFilesRecursive = (dir) => {
+      const out = []
+      if (!fs.existsSync(dir)) return out
+      for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, item.name)
+        if (item.isDirectory()) {
+          out.push(...collectFilesRecursive(fullPath))
+        } else {
+          out.push(fullPath)
+        }
+      }
+      return out
+    }
 
     // 根据文件夹参数确定目标目录
     let targetDir = uploadsDir
@@ -663,7 +680,23 @@ router.get('/files', authenticateToken, requireEditor, async (req, res) => {
       return files
     }
 
-    const files = getFilesInDirectory(targetDir, baseUrl)
+    const files = searchTerm
+      ? // 搜索模式：递归当前目录及全部子目录，全量过滤后再分页
+        collectFilesRecursive(targetDir)
+          .filter((fullPath) => path.basename(fullPath).toLowerCase().includes(searchTerm))
+          .map((fullPath) => {
+            const relativePath = path.relative(uploadsDir, fullPath).split(path.sep).join('/')
+            const stats = fs.statSync(fullPath)
+            return {
+              name: path.basename(fullPath),
+              path: relativePath,
+              url: `/uploads/${relativePath}`,
+              size: stats.size,
+              modified: stats.mtime,
+              type: path.extname(fullPath).substring(1) || 'unknown'
+            }
+          })
+      : getFilesInDirectory(targetDir, baseUrl)
 
     // 按修改时间排序
     files.sort((a, b) => new Date(b.modified) - new Date(a.modified))

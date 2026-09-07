@@ -160,8 +160,12 @@ const AssetPickerModal = ({
 
   useEffect(() => {
     if (!isOpen) return
-    loadFiles(activeSource, currentFolder[activeSource], meta[activeSource].page, activeLimit)
-  }, [isOpen, activeSource, currentFolder, meta[activeSource].page, activeLimit])
+    // 统一加载入口：目录/页码/每页数量/搜索词变化都会触发；搜索词加 300ms 防抖
+    const timer = setTimeout(() => {
+      loadFiles(activeSource, currentFolder[activeSource], meta[activeSource].page, activeLimit)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [isOpen, activeSource, currentFolder[activeSource], meta[activeSource].page, activeLimit, searchTerm])
 
   useEffect(() => {
     if (!isOpen || !isMultiMode) {
@@ -275,11 +279,13 @@ const AssetPickerModal = ({
     try {
       setIsLoadingFiles(true)
       const limitValue = limitOverride || pageLimit[source]
+      const trimmedSearch = (searchTerm || '').trim()
       if (source === 'user') {
         const response = await uploadApi.getFiles({
           folder: folder || 'root',
           page,
-          limit: limitValue
+          limit: limitValue,
+          search: trimmedSearch || undefined
         })
         if (response.success) {
           setFiles(prev => ({ ...prev, user: response.data || [] }))
@@ -302,6 +308,9 @@ const AssetPickerModal = ({
           page: page.toString(),
           limit: limitValue.toString()
         })
+        if (trimmedSearch) {
+          systemParams.set('search', trimmedSearch)
+        }
         const response = await fetch(`/api/system-default/files?${systemParams.toString()}`, {
           credentials: 'include'
         }).then(res => res.json())
@@ -482,7 +491,7 @@ const AssetPickerModal = ({
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="搜索素材..."
+                placeholder="搜索素材名（含子目录）..."
                 className="w-full pl-10 pr-4 py-2 border border-theme-divider rounded-lg bg-theme-surface text-theme-text theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
               />
             </div>
@@ -497,7 +506,6 @@ const AssetPickerModal = ({
                     ...prev,
                     [activeSource]: { ...prev[activeSource], page: 1 }
                   }))
-                  loadFiles(activeSource, currentFolder[activeSource], 1, newLimit)
                 }}
                 className="px-3 py-1 border border-theme-divider rounded bg-theme-surface text-theme-textSecondary focus:ring-2 focus:ring-tech-accent focus:border-transparent"
                 style={{
@@ -577,7 +585,7 @@ const AssetPickerModal = ({
             ) : filteredFiles.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-theme-textSecondary">
                 <ImageIcon className="w-10 h-10 mb-2" />
-                <p>当前目录暂无素材</p>
+                <p>{searchTerm.trim() ? '未找到匹配的素材' : '当前目录暂无素材'}</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

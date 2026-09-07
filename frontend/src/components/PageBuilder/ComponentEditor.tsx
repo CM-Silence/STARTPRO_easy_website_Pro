@@ -53,6 +53,8 @@ const getPreferredSource = (value?: string): 'user' | 'system' => {
 const ICON_COLOR_COMPONENTS = new Set([
   'feature-grid',
   'feature-grid-large',
+  'feature-grid-multi',
+  'accordion',
   'stats-section',
   'timeline',
   'cyber-timeline'
@@ -117,6 +119,7 @@ const ComponentEditor = ({
     assetPickerMode,
     openAssetPicker,
     openMultiAssetPicker,
+    openAssetPickerWithHandler,
     closeAssetPicker,
     handleAssetSelect,
     handleMultiAssetSelect
@@ -127,6 +130,10 @@ const ComponentEditor = ({
 
   const openAssetPickerWithValue = (target: AssetPickerTarget, currentValue?: string) =>
     openAssetPicker(target, getPreferredSource(currentValue))
+
+  // 嵌套路径（数组内对象内的字段）素材选择：由调用方传入写回回调
+  const openNestedAssetPicker = (handler: (asset: SelectedAsset) => void, currentValue?: string) =>
+    openAssetPickerWithHandler(handler, getPreferredSource(currentValue))
 
   const renderIconColorControls = () => {
     if (!supportsIconColorControls) return null
@@ -193,6 +200,7 @@ const ComponentEditor = ({
     'table',
     'feature-grid',
     'feature-grid-large',
+    'feature-grid-multi',
     'pricing-cards',
     'contact-form',
     'team-grid',
@@ -454,6 +462,7 @@ const ComponentEditor = ({
           addArrayItem,
           removeArrayItem,
           openAssetPickerWithValue,
+          openNestedAssetPicker,
           isAssetUrl,
           isSvgMarkup
         })}

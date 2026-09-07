@@ -10,7 +10,10 @@ export const FeatureGridLargePreview: React.FC<{ component: TemplateComponent }>
   const { t } = useTranslation('common')
   const {title, subtitle, features = [], widthOption = 'full', backgroundColorOption = 'default'} = component.props
   const iconColorStyle = getIconColorStyle(component.props)
-  const hover = grabMotionSettings(component.props).hover
+  const motionSettings = grabMotionSettings(component.props)
+  const hover = motionSettings.hover
+  const hoverEnabled = hover !== 'none'
+  const hoverDuration = motionSettings.hoverDuration
 
   // 根据宽度选项设置容器类名
   const containerClass = widthOption === 'standard' ? 'max-w-screen-2xl mx-auto' : 'w-full';
@@ -51,10 +54,13 @@ export const FeatureGridLargePreview: React.FC<{ component: TemplateComponent }>
             key={index}
             hover={hover}
             duration={grabMotionSettings(component.props).hoverDuration}
-            className={`feature-large-card group relative p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-200 border border-color-border hover:border-primary overflow-hidden ${backgroundColorOption === 'transparent' ? '' : 'bg-color-surface'}`}
+            className={`feature-large-card ${hoverEnabled ? "group/card " : ""}relative p-8 rounded-2xl shadow-lg border border-color-border overflow-hidden ${backgroundColorOption === 'transparent' ? '' : 'bg-color-surface'}`}
           >
             {/* 背景装饰 */}
-            <div className="feature-large-card-decoration absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-200"></div>
+            <div
+              className={`feature-large-card-decoration absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full -mr-10 -mt-10 ${hoverEnabled ? 'group-hover/card:scale-150 transition-transform' : ''}`}
+              style={hoverEnabled ? { transitionDuration: `${hoverDuration}s` } : undefined}
+            ></div>
 
             {/* 大图图标 */}
               <div className="feature-large-icon-container relative mb-6">
@@ -78,7 +84,7 @@ export const FeatureGridLargePreview: React.FC<{ component: TemplateComponent }>
 
             {/* 内容 */}
             <div className="text-center relative z-10">
-              <h3 className="text-xl font-bold mb-4 text-text-primary group-hover:text-accent transition-colors">
+              <h3 className="text-xl font-bold mb-4 text-text-primary">
                 {feature.title || '功能标题'}
               </h3>
               <p className="text-text-secondary leading-relaxed">
@@ -102,7 +108,7 @@ export const FeatureGridLargePreview: React.FC<{ component: TemplateComponent }>
             )}
 
             {/* 底部装饰线 */}
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-accent transform scale-x-0 group-hover:scale-x-100 transition-transform duration-200"></div>
+            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-accent origin-left"></div>
           </HoverFX>
         ))}
       </div>

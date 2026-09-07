@@ -6,7 +6,10 @@ import { grabMotionSettings } from '@/styles/motion-presets'
 
 export const TeamGridPreview: React.FC<{ component: TemplateComponent }> = ({ component }) => {
   const {title, subtitle, members = [], widthOption = 'full', backgroundColorOption = 'default'} = component.props
-  const hover = grabMotionSettings(component.props).hover
+  const motionSettings = grabMotionSettings(component.props)
+  const hover = motionSettings.hover
+  const hoverEnabled = hover !== 'none'
+  const hoverDuration = motionSettings.hoverDuration
 
   // 根据宽度选项设置容器类名
   const containerClass = `${widthOption === 'standard' ? 'max-w-screen-2xl mx-auto' : 'w-full'} ${backgroundColorOption === 'transparent' ? '' : 'bg-color-surface'}`;
@@ -36,11 +39,11 @@ export const TeamGridPreview: React.FC<{ component: TemplateComponent }> = ({ co
             key={index}
             hover={hover}
             duration={grabMotionSettings(component.props).hoverDuration}
-            className="team-member-card group text-center bg-color-surface p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-200 border border-color-border hover:border-accent"
+            className={`team-member-card ${hoverEnabled ? "group/team-card " : ""}text-center bg-color-surface p-8 rounded-2xl shadow-lg border border-color-border`}
           >
             {/* 头像 */}
             <div className="team-member-avatar relative mb-6 mx-auto">
-              <div className="team-member-avatar-container w-32 h-32 mx-auto rounded-full overflow-hidden bg-gradient-to-br from-color-background to-color-surface flex items-center justify-center relative group-hover:scale-105 transition-transform duration-200">
+              <div className={`team-member-avatar-container w-32 h-32 mx-auto rounded-full overflow-hidden bg-gradient-to-br from-color-background to-color-surface flex items-center justify-center relative ${hoverEnabled ? 'group-hover/team-card:scale-105 transition-transform' : ''}`} style={hoverEnabled ? { transitionDuration: `${hoverDuration}s` } : undefined}>
                 {member.avatar ? (
                   <img
                     key={`${member.avatar}-${index}`}
@@ -57,13 +60,20 @@ export const TeamGridPreview: React.FC<{ component: TemplateComponent }> = ({ co
                   <span className="text-text-tertiary text-5xl">👤</span>
                 )}
               </div>
-              {/* 装饰光圈 */}
-              <div className="team-member-avatar-glow absolute inset-0 w-32 h-32 mx-auto rounded-full bg-gradient-to-r from-primary to-accent opacity-0 group-hover:opacity-20 transition-opacity duration-200 blur-lg"></div>
+              {hoverEnabled && (
+                <div
+                  className="team-member-avatar-glow absolute inset-0 w-32 h-32 mx-auto rounded-full bg-gradient-to-r from-primary to-accent opacity-0 group-hover/team-card:opacity-20 transition-opacity blur-lg"
+                  style={{ transitionDuration: `${hoverDuration}s` }}
+                ></div>
+              )}
             </div>
 
             {/* 信息 */}
             <div className="team-member-info">
-              <h3 className="team-member-name text-xl font-bold text-text-primary mb-2 group-hover:text-primary transition-colors">
+              <h3
+                className={`team-member-name text-xl font-bold text-text-primary mb-2 ${hoverEnabled ? 'group-hover/team-card:text-primary transition-colors' : ''}`}
+                style={hoverEnabled ? { transitionDuration: `${hoverDuration}s` } : undefined}
+              >
                 {member.name || '成员姓名'}
               </h3>
               <p className="team-member-role text-text-secondary font-semibold mb-4 text-sm uppercase tracking-wide">
@@ -74,8 +84,6 @@ export const TeamGridPreview: React.FC<{ component: TemplateComponent }> = ({ co
               </p>
             </div>
 
-            {/* 底部装饰 */}
-            <div className="team-member-bottom-decoration absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-accent transform scale-x-0 group-hover:scale-x-100 transition-transform duration-200 rounded-b-2xl"></div>
           </HoverFX>
         ))}
       </div>

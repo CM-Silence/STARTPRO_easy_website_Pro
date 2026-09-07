@@ -56,6 +56,8 @@ export type ComponentType =
   | 'raw-html'
   | 'link-block'
   | 'table'
+  | 'feature-grid-multi'
+  | 'accordion'
 
 export interface ComponentDefinition {
   type: ComponentType

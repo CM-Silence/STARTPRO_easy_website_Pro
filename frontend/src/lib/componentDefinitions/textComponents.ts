@@ -1,5 +1,5 @@
 import { ComponentDefinition } from '@/types/templates'
-import { CallToActionPreview, ContactFormPreview, FaqSectionPreview, LinkBlockPreview, TextBlockPreview, TablePreview } from '@/components/PageBuilder/previews'
+import { AccordionPreview, CallToActionPreview, ContactFormPreview, FaqSectionPreview, LinkBlockPreview, TextBlockPreview, TablePreview } from '@/components/PageBuilder/previews'
 
 export const textComponents: ComponentDefinition[] = [
   {
@@ -251,5 +251,51 @@ export const textComponents: ComponentDefinition[] = [
         ] }
       ],
       previewComponent: TablePreview
+    },
+
+  {
+      type: 'accordion',
+      name: '手风琴',
+      description: '可折叠内容卡片列表：标题与元信息为结构化字段，正文为富文本，点击展开收起',
+      icon: '🗂️',
+      category: '文本组件',
+      defaultProps: {
+        title: '',
+        subtitle: '',
+        items: [
+          {
+            icon: '📌',
+            title: '折叠项一',
+            meta: [
+              { icon: '', text: '元信息一' },
+              { icon: '', text: '元信息二' }
+            ],
+            content: '<p>这里是折叠项一的正文内容，支持富文本。</p>'
+          },
+          {
+            icon: '📌',
+            title: '折叠项二',
+            meta: [
+              { icon: '', text: '元信息一' }
+            ],
+            content: '<p>这里是折叠项二的正文内容，支持富文本。</p>'
+          }
+        ],
+        widthOption: 'full',
+        backgroundColorOption: 'default'
+      },
+      editableFields: [
+        { key: 'title', label: '标题', type: 'text', value: '' },
+        { key: 'subtitle', label: '副标题', type: 'text', value: '' },
+        { key: 'widthOption', label: '宽度选项', type: 'text', value: 'full', options: [
+          { label: '全宽', value: 'full' },
+          { label: '标准宽度', value: 'standard' }
+        ] },
+        { key: 'backgroundColorOption', label: '背景色选项', type: 'text', value: 'default', options: [
+          { label: '默认背景色', value: 'default' },
+          { label: '透明背景色', value: 'transparent' }
+        ] }
+      ],
+      previewComponent: AccordionPreview
     }
 ]

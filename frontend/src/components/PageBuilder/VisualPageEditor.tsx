@@ -13,6 +13,7 @@ import {
 import { PageTemplate, TemplateComponent } from '@/types/templates'
 import TemplateSelector from '../TemplateSelector'
 import PageBuilder from './PageBuilder'
+import LanguageSelect from '@/components/admin/LanguageSelect'
 import { generateHtmlFromComponents } from '@/lib/pageContent/generateHtmlFromComponents'
 
 interface VisualPageEditorProps {
@@ -26,6 +27,7 @@ interface VisualPageEditorProps {
     meta_description?: string
     published: boolean
     category: string
+    lang: string
   }) => void
   onCancel: () => void
   initialData?: any
@@ -49,7 +51,8 @@ const VisualPageEditor: React.FC<VisualPageEditorProps> = ({
     meta_title: '',
     meta_description: '',
     published: false,
-    category: 'general'
+    category: 'general',
+    lang: 'zh'
   })
 
   // 处理初始数据
@@ -80,7 +83,8 @@ const VisualPageEditor: React.FC<VisualPageEditorProps> = ({
             meta_title: initialData.meta_title || '',
             meta_description: initialData.meta_description || '',
             published: initialData.published !== undefined ? initialData.published : false,
-            category: initialData.category || 'general'
+            category: initialData.category || 'general',
+            lang: initialData.lang || 'zh'
           })
 
           // 如果有模板数据，设置选中的模板
@@ -353,6 +357,18 @@ const VisualPageEditor: React.FC<VisualPageEditorProps> = ({
                       />
                     </div>
 
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">页面语言</label>
+                      <LanguageSelect
+                        value={pageSettings.lang}
+                        onChange={(v) => setPageSettings((prev) => ({ ...prev, lang: v }))}
+                        disabled={editMode !== 'create'}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {editMode === 'create' ? '页面语言仅在创建时确定，保存后不可更改' : '页面语言在创建时已确定，不可更改'}
+                      </p>
+                    </div>
+
                     <div className="border-t border-gray-200 pt-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">SEO 设置</h3>
 
@@ -396,9 +412,10 @@ const VisualPageEditor: React.FC<VisualPageEditorProps> = ({
                     <div className="flex justify-between pt-6">
                       <button
                         onClick={() => setCurrentStep('build')}
-                        className="px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors"
+                        className="flex items-center space-x-2 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
                       >
-                        返回编辑
+                        <ArrowLeft className="w-5 h-5" />
+                        <span>返回编辑</span>
                       </button>
 
                       <button

@@ -1,21 +1,18 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useRouter } from 'next/router'
 import VisualPageEditor from '@/components/PageBuilder/VisualPageEditor'
-import LanguageSelect from '@/components/admin/LanguageSelect'
 import { pagesApi } from '@/utils/api'
 import toast from 'react-hot-toast'
 
 export default function CreateVisualPage() {
   const router = useRouter()
-  const [lang, setLang] = useState('zh')
 
   const handleSaveVisual = async (pageData: any) => {
     try {
       console.log('准备保存的页面数据:', pageData);
-      // 准备要保存的数据
+      // 准备要保存的数据（lang 由编辑器「页面设置」表单提供）
       const formData = {
         ...pageData,
-        lang,
         // 确保content字段不为空
         content: pageData.content || '<p>页面内容</p>',
         // 将组件数据保存到 template_data 字段
@@ -52,25 +49,19 @@ export default function CreateVisualPage() {
   }
 
   return (
-    <div className="relative">
-      <div className="absolute top-2 right-2 z-[60] w-44">
-        <div className="mb-1 text-xs font-medium text-gray-500">页面语言</div>
-        <LanguageSelect value={lang} onChange={setLang} />
-      </div>
-      <VisualPageEditor
-        editMode="create"
-        initialData={{
-          title: '',
-          slug: '',
-          content: '',
-          published: false,
-          category: 'general',
-          components: [],
-          template_id: null
-        }}
-        onSave={handleSaveVisual}
-        onCancel={handleCancel}
-      />
-    </div>
+    <VisualPageEditor
+      editMode="create"
+      initialData={{
+        title: '',
+        slug: '',
+        content: '',
+        published: false,
+        category: 'general',
+        components: [],
+        template_id: null
+      }}
+      onSave={handleSaveVisual}
+      onCancel={handleCancel}
+    />
   )
 }

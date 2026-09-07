@@ -47,10 +47,13 @@ const useAssetPicker = ({
   const [assetPickerSource, setAssetPickerSource] = useState<AssetSource>('user')
   const [assetPickerMode, setAssetPickerMode] = useState<AssetPickerMode>('single')
   const [multiSelectHandler, setMultiSelectHandler] = useState<((assets: SelectedAsset[]) => void) | null>(null)
+  // 单选自定义回调：供编辑器处理无法用 {fieldKey, arrayKey, arrayIndex} 表达的嵌套路径
+  const [singleSelectHandler, setSingleSelectHandler] = useState<((asset: SelectedAsset) => void) | null>(null)
 
   const openAssetPicker = (target: AssetPickerTarget, preferredSource: AssetSource = 'user') => {
     setAssetPickerMode('single')
     setMultiSelectHandler(null)
+    setSingleSelectHandler(null)
     setAssetPickerSource(preferredSource)
     setAssetPickerTarget(target)
     setIsAssetPickerOpen(true)
@@ -59,6 +62,16 @@ const useAssetPicker = ({
   const openMultiAssetPicker = (handler: (assets: SelectedAsset[]) => void, preferredSource: AssetSource = 'user') => {
     setAssetPickerMode('multiple')
     setMultiSelectHandler(() => handler)
+    setSingleSelectHandler(null)
+    setAssetPickerTarget(null)
+    setAssetPickerSource(preferredSource)
+    setIsAssetPickerOpen(true)
+  }
+
+  const openAssetPickerWithHandler = (handler: (asset: SelectedAsset) => void, preferredSource: AssetSource = 'user') => {
+    setAssetPickerMode('single')
+    setMultiSelectHandler(null)
+    setSingleSelectHandler(() => handler)
     setAssetPickerTarget(null)
     setAssetPickerSource(preferredSource)
     setIsAssetPickerOpen(true)
@@ -68,12 +81,20 @@ const useAssetPicker = ({
     setIsAssetPickerOpen(false)
     setAssetPickerTarget(null)
     setMultiSelectHandler(null)
+    setSingleSelectHandler(null)
     setAssetPickerMode('single')
   }
 
   const handleAssetSelect = (asset: SelectedAsset) => {
-    if (!assetPickerTarget) return
     const normalized = normalizeSelectedAsset(asset)
+
+    if (singleSelectHandler) {
+      singleSelectHandler(normalized)
+      closeAssetPicker()
+      return
+    }
+
+    if (!assetPickerTarget) return
     const value = normalized.url || asset.url
 
     if (assetPickerTarget.arrayKey !== undefined && assetPickerTarget.arrayIndex !== undefined) {
@@ -104,6 +125,7 @@ const useAssetPicker = ({
     assetPickerMode,
     openAssetPicker,
     openMultiAssetPicker,
+    openAssetPickerWithHandler,
     closeAssetPicker,
     handleAssetSelect,
     handleMultiAssetSelect
