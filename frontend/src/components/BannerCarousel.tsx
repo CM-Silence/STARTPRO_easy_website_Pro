@@ -9,6 +9,7 @@ interface Slide {
   overlayPosition: 'top-left' | 'top-center' | 'top-right' | 'center-left' | 'center' | 'center-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
   titleColor?: string
   descriptionColor?: string
+  buttonTextColor?: string
 }
 
 interface BannerCarouselProps {
@@ -241,14 +242,24 @@ const BannerCarousel: React.FC<BannerCarouselProps> = ({
                   {slide.buttonText && (
                     <a
                       href={slide.buttonLink || '#'}
-                      className="inline-block px-6 py-3 bg-tech-accent text-white font-medium rounded-lg hover:bg-tech-secondary transition-colors duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      className="inline-flex items-center gap-2 px-1 py-2 text-text-primary font-medium group/banner-btn transition-colors duration-300 hover:text-primary banner-slide-button"
                       style={
-                        buttonColorMode === 'custom' && customButtonColor
+                        slide.buttonTextColor
+                          ? { color: slide.buttonTextColor }
+                          : buttonColorMode === 'custom' && customButtonColor
                           ? { color: customButtonColor }
                           : undefined
                       }
                     >
-                      {slide.buttonText}
+                      <span>{slide.buttonText}</span>
+                      <svg
+                        className="w-4 h-4 flex-shrink-0 transition-transform duration-300 group-hover/banner-btn:translate-x-1.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
                     </a>
                   )}
                 </div>

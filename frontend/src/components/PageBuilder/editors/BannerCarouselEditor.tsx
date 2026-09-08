@@ -191,6 +191,26 @@ const BannerCarouselEditor: React.FC<BannerCarouselEditorProps> = ({
                 />
               </div>
             </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">按钮文字颜色</label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="color"
+                  value={slide.buttonTextColor || '#ffffff'}
+                  onChange={(e) => onChange(index, 'buttonTextColor', e.target.value)}
+                  className="h-8 w-12 rounded border border-gray-300 dark:border-gray-600 bg-transparent cursor-pointer"
+                />
+                <input
+                  type="text"
+                  key={`bc-${index}-${slide.buttonTextColor || 'none'}`}
+                  defaultValue={slide.buttonTextColor || ''}
+                  onBlur={(e) => onChange(index, 'buttonTextColor', e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') onChange(index, 'buttonTextColor', (e.target as HTMLInputElement).value) }}
+                  placeholder="默认"
+                  className="flex-1 min-w-0 px-2 py-1 text-sm rounded theme-input"
+                />
+              </div>
+            </div>
           </div>
         </div>
       ))}

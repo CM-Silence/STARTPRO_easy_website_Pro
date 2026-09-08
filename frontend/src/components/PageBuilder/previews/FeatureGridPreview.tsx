@@ -64,7 +64,7 @@ export const FeatureGridPreview: React.FC<{ component: TemplateComponent }> = ({
 
             {/* 图标 */}
             <div className="feature-icon-container relative mb-6">
-              <div className="feature-icon w-16 h-16 mx-auto bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center text-2xl text-text-primary shadow-lg">
+              <div className="feature-icon w-16 h-16 mx-auto bg-color-surfaceAlt rounded-2xl flex items-center justify-center text-2xl text-text-primary shadow-sm">
                 {renderIconVisual(feature.icon, {
                   wrapperClassName: 'w-10 h-10 flex items-center justify-center',
                   imageClassName: 'w-10 h-10 object-contain',

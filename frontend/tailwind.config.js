@@ -8,7 +8,9 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // DEFAULT 映射到主题 CSS 变量，使 bg-primary / from-primary / border-accent 等工具类生效
         primary: {
+          DEFAULT: 'var(--color-primary)',
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
@@ -19,6 +21,12 @@ module.exports = {
           700: '#1d4ed8',
           800: '#1e40af',
           900: '#1e3a8a',
+        },
+        secondary: {
+          DEFAULT: 'var(--color-secondary)',
+        },
+        accent: {
+          DEFAULT: 'var(--color-accent)',
         },
         tech: {
           dark: '#0a0b0d',
@@ -42,6 +50,7 @@ module.exports = {
           accent: 'var(--color-accent)',
           background: 'var(--color-background)',
           surface: 'var(--color-surface)',
+          surfaceAlt: 'var(--color-surface-alt)',
           border: 'var(--color-text-muted)',
         },
         text: {

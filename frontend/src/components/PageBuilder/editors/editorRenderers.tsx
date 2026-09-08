@@ -83,7 +83,8 @@ const renderBannerCarouselEditor: CustomEditorRenderer = ({
           overlayPosition: 'center',
           overlayTheme: 'light',
           titleColor: '',
-          descriptionColor: ''
+          descriptionColor: '',
+          buttonTextColor: ''
         })
       }
       onChange={(index, key, value) => handleArrayFieldChange('slides', index, key, value)}

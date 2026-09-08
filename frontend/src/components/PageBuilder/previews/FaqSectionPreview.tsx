@@ -23,7 +23,7 @@ return (
           <div key={index} className={`faq-item border border-color-border rounded-lg ${backgroundColorOption === 'transparent' ? '' : 'bg-color-background'}`}>
             <div className="faq-item-content p-6">
               <h3 className="faq-question font-semibold text-text-primary mb-3 flex items-center">
-                <span className="faq-question-number w-6 h-6 bg-primary text-text-primary rounded-full flex items-center justify-center text-sm mr-3">
+                <span className="faq-question-number w-6 h-6 bg-color-surfaceAlt text-text-primary rounded-full flex items-center justify-center text-sm mr-3 flex-shrink-0">
                   {index + 1}
                 </span>
                 {faq.question || 'FAQ问题'}

@@ -64,7 +64,7 @@ export const FeatureGridLargePreview: React.FC<{ component: TemplateComponent }>
 
             {/* 大图图标 */}
               <div className="feature-large-icon-container relative mb-6">
-                <div className="feature-large-icon w-full mx-auto bg-gradient-to-br from-primary/5 to-secondary/5 rounded-2xl flex items-center justify-center overflow-hidden">
+                <div className="feature-large-icon w-full mx-auto bg-color-surfaceAlt rounded-2xl flex items-center justify-center overflow-hidden">
                   {feature.icon ? (
                     renderIconVisual(feature.icon, {
                       wrapperClassName: 'w-full min-h-[200px] flex items-center justify-center p-4',
