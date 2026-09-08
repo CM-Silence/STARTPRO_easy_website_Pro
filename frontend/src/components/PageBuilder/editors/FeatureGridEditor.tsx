@@ -10,6 +10,7 @@ interface FeatureGridEditorProps {
   onChange: (index: number, fieldKey: string, value: any) => void
   onAdd: () => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
   openAssetPicker: (target: AssetPickerTarget, currentValue?: string) => void
   isAssetUrl: (value?: string) => boolean
   isSvgMarkup: (value?: string) => boolean
@@ -23,6 +24,7 @@ const FeatureGridEditor: React.FC<FeatureGridEditorProps> = ({
   onChange,
   onAdd,
   onRemove,
+  renderMoveControls,
   openAssetPicker,
   isAssetUrl,
   isSvgMarkup
@@ -64,6 +66,7 @@ const FeatureGridEditor: React.FC<FeatureGridEditorProps> = ({
         <div key={index} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2 mb-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">功能 {index + 1}</span>
+            {renderMoveControls?.(index)}
             <button onClick={() => onRemove(index)} className="p-1 text-red-500 hover:text-red-700">
               <Trash2 className="w-3 h-3" />
             </button>

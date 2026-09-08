@@ -6,6 +6,7 @@ interface LinkBlockEditorProps {
   onAdd: () => void
   onChange: (index: number, fieldKey: string, value: any) => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
   linkStyle: string
   linkShape: string
   linkGlow: boolean
@@ -18,6 +19,7 @@ const LinkBlockEditor: React.FC<LinkBlockEditorProps> = ({
   onAdd,
   onChange,
   onRemove,
+  renderMoveControls,
   linkStyle,
   linkShape,
   linkGlow,
@@ -43,6 +45,7 @@ const LinkBlockEditor: React.FC<LinkBlockEditorProps> = ({
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               链接 {index + 1}
             </span>
+            {renderMoveControls?.(index)}
             <button
               onClick={() => onRemove(index)}
               className="p-1 text-red-500 hover:text-red-700"

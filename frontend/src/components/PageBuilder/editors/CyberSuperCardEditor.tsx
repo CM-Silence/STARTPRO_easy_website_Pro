@@ -17,6 +17,7 @@ interface CyberSuperCardEditorProps {
   onAdd: () => void
   onChange: (index: number, fieldKey: string, value: any) => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
   openAssetPicker: (target: AssetPickerTarget, currentValue?: string) => void
   isAssetUrl: (value?: string) => boolean
   isSvgMarkup: (value?: string) => boolean
@@ -72,6 +73,7 @@ const CyberSuperCardEditor: React.FC<CyberSuperCardEditorProps> = ({
   onAdd,
   onChange,
   onRemove,
+  renderMoveControls,
   openAssetPicker,
   isAssetUrl,
   isSvgMarkup
@@ -197,6 +199,7 @@ const CyberSuperCardEditor: React.FC<CyberSuperCardEditorProps> = ({
                   <h5 className="font-medium text-gray-900 dark:text-white">卡片 {index + 1}</h5>
                   <p className="text-xs text-gray-500 dark:text-gray-400">每张卡片都可以设置自己的图标、描述与标签</p>
                 </div>
+                {renderMoveControls?.(index)}
                 <button
                   type="button"
                   onClick={() => onRemove(index)}
@@ -278,7 +281,7 @@ const CyberSuperCardEditor: React.FC<CyberSuperCardEditorProps> = ({
                       type="text"
                       value={card.iconColor || '#0ea5e9'}
                       onChange={(e) => onChange(index, 'iconColor', e.target.value)}
-                      className="w-32 px-3 py-2 border border-theme-divider rounded theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
+                      className="w-32 min-w-0 px-3 py-2 border border-theme-divider rounded theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
                       placeholder="#0ea5e9"
                     />
                   </div>

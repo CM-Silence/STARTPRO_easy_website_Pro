@@ -7,6 +7,7 @@ interface CyberShowcaseEditorProps {
   onAdd: () => void
   onChange: (index: number, fieldKey: string, value: any) => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
   openAssetPicker: (target: AssetPickerTarget, currentValue?: string) => void
   isAssetUrl: (value?: string) => boolean
   isSvgMarkup: (value?: string) => boolean
@@ -17,6 +18,7 @@ const CyberShowcaseEditor: React.FC<CyberShowcaseEditorProps> = ({
   onAdd,
   onChange,
   onRemove,
+  renderMoveControls,
   openAssetPicker,
   isAssetUrl,
   isSvgMarkup
@@ -54,6 +56,7 @@ const CyberShowcaseEditor: React.FC<CyberShowcaseEditorProps> = ({
           >
             <div className="flex items-center justify-between mb-3">
               <h5 className="font-medium text-gray-900 dark:text-white">展示项 {index + 1}</h5>
+              {renderMoveControls?.(index)}
               <button
                 type="button"
                 onClick={() => onRemove(index)}
@@ -165,7 +168,7 @@ const CyberShowcaseEditor: React.FC<CyberShowcaseEditorProps> = ({
                           type="text"
                           value={control.iconColor || '#60a5fa'}
                           onChange={(e) => onChange(index, 'iconColor', e.target.value)}
-                          className="flex-1 min-w-[120px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
+                          className="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
                           placeholder="#60A5FA"
                         />
                       </div>

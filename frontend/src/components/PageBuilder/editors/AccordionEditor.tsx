@@ -6,6 +6,7 @@ interface AccordionEditorProps {
   items: any[]
   onAdd: () => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
   onChange: (index: number, fieldKey: 'icon' | 'title' | 'content', value: any) => void
   onAddMeta: (itemIndex: number) => void
   onRemoveMeta: (itemIndex: number, metaIndex: number) => void
@@ -18,6 +19,7 @@ const AccordionEditor: React.FC<AccordionEditorProps> = ({
   items,
   onAdd,
   onRemove,
+  renderMoveControls,
   onChange,
   onAddMeta,
   onRemoveMeta,
@@ -42,6 +44,7 @@ const AccordionEditor: React.FC<AccordionEditorProps> = ({
         <div key={index} className="p-3 border border-gray-200 rounded-lg space-y-2 mb-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">折叠项 {index + 1}</span>
+            {renderMoveControls?.(index)}
             <button onClick={() => onRemove(index)} className="p-1 text-red-500 hover:text-red-700">
               <Trash2 className="w-3 h-3" />
             </button>

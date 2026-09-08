@@ -6,9 +6,10 @@ interface FaqSectionEditorProps {
   onAdd: () => void
   onChange: (index: number, fieldKey: string, value: any) => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
 }
 
-const FaqSectionEditor: React.FC<FaqSectionEditorProps> = ({ faqs, onAdd, onChange, onRemove }) => {
+const FaqSectionEditor: React.FC<FaqSectionEditorProps> = ({ faqs, onAdd, onChange, onRemove, renderMoveControls }) => {
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-3">
@@ -28,6 +29,7 @@ const FaqSectionEditor: React.FC<FaqSectionEditorProps> = ({ faqs, onAdd, onChan
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               问题 {index + 1}
             </span>
+            {renderMoveControls?.(index)}
             <button
               onClick={() => onRemove(index)}
               className="p-1 text-red-500 hover:text-red-700"

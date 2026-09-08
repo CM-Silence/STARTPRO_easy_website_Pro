@@ -1,4 +1,5 @@
 import React from 'react'
+import { makeArrayMoveControls, ArrayMoveControls } from './common/ArrayMoveControls'
 import { TemplateComponent } from '@/types/templates'
 import { AssetPickerTarget } from '../hooks/useAssetPicker'
 import FeatureGridEditor from './FeatureGridEditor'
@@ -30,6 +31,7 @@ export type CustomEditorProps = {
   openNestedAssetPicker?: (handler: (asset: { url: string }) => void, currentValue?: string) => void
   addArrayItem: (arrayKey: string, template: any) => void
   removeArrayItem: (arrayKey: string, index: number) => void
+  moveArrayItem?: (arrayKey: string, from: number, to: number) => void
   isAssetUrl: (value?: string) => boolean
   isSvgMarkup: (value?: string) => boolean
 }
@@ -56,6 +58,7 @@ const renderBannerCarouselEditor: CustomEditorRenderer = ({
   addArrayItem,
   handleArrayFieldChange,
   removeArrayItem,
+  moveArrayItem,
   handleFieldChange,
   openAssetPickerWithValue
 }) => {
@@ -63,6 +66,7 @@ const renderBannerCarouselEditor: CustomEditorRenderer = ({
   return (
     <BannerCarouselEditor
       slides={formData.slides || []}
+      renderMoveControls={makeArrayMoveControls(moveArrayItem, 'slides', (formData.slides || []).length)}
       settings={{
         autoPlay: formData.autoPlay !== false,
         showIndicators: formData.showIndicators !== false,
@@ -98,6 +102,7 @@ const renderFeatureGridEditor: CustomEditorRenderer = ({
   handleArrayFieldChange,
   addArrayItem,
   removeArrayItem,
+  moveArrayItem,
   openAssetPickerWithValue,
   isAssetUrl,
   isSvgMarkup
@@ -106,6 +111,7 @@ const renderFeatureGridEditor: CustomEditorRenderer = ({
   return (
     <FeatureGridEditor
       type={component.type}
+      renderMoveControls={makeArrayMoveControls(moveArrayItem, 'features', (formData.features || []).length)}
       features={formData.features || []}
       cardsPerRow={formData.cardsPerRow}
       onCardsPerRowChange={(value) => handleFieldChange('cardsPerRow', value)}
@@ -132,12 +138,14 @@ const renderPricingEditor: CustomEditorRenderer = ({
   handleFieldChange,
   handleArrayFieldChange,
   addArrayItem,
-  removeArrayItem
+  removeArrayItem,
+  moveArrayItem
 }) => {
   if (component.type !== 'pricing-cards') return null
   return (
     <PricingCardsEditor
       cards={formData.plans || []}
+      renderMoveControls={makeArrayMoveControls(moveArrayItem, 'plans', (formData.plans || []).length)}
       onAdd={() =>
         addArrayItem('plans', {
           name: '基础版',
@@ -163,6 +171,7 @@ const renderProductShowcaseCardEditor: CustomEditorRenderer = ({
   handleArrayFieldChange,
   addArrayItem,
   removeArrayItem,
+  moveArrayItem,
   openAssetPickerWithValue
 }) => {
   if (component.type !== 'product-showcase-card') return null
@@ -173,6 +182,7 @@ const renderProductShowcaseCardEditor: CustomEditorRenderer = ({
       handleArrayFieldChange={handleArrayFieldChange}
       addArrayItem={addArrayItem}
       removeArrayItem={removeArrayItem}
+      moveArrayItem={moveArrayItem}
       openAssetPickerWithValue={openAssetPickerWithValue}
     />
   )
@@ -184,12 +194,14 @@ const renderTeamGridEditor: CustomEditorRenderer = ({
   addArrayItem,
   handleArrayFieldChange,
   removeArrayItem,
+  moveArrayItem,
   openAssetPickerWithValue
 }) => {
   if (component.type !== 'team-grid') return null
   return (
     <TeamGridEditor
       members={formData.members || []}
+      renderMoveControls={makeArrayMoveControls(moveArrayItem, 'members', (formData.members || []).length)}
       onAdd={() =>
         addArrayItem('members', {
           name: '成员姓名',
@@ -211,6 +223,7 @@ const renderTimelineEditorBlock: CustomEditorRenderer = ({
   addArrayItem,
   handleArrayFieldChange,
   removeArrayItem,
+  moveArrayItem,
   openAssetPickerWithValue,
   isAssetUrl,
   isSvgMarkup
@@ -219,6 +232,7 @@ const renderTimelineEditorBlock: CustomEditorRenderer = ({
   return (
     <TimelineEditor
       events={formData.events || []}
+      renderMoveControls={makeArrayMoveControls(moveArrayItem, 'events', (formData.events || []).length)}
       onAdd={() =>
         addArrayItem('events', {
           date: '2024',
@@ -241,12 +255,14 @@ const renderCyberTimelineEditorBlock: CustomEditorRenderer = ({
   formData,
   addArrayItem,
   handleArrayFieldChange,
-  removeArrayItem
+  removeArrayItem,
+  moveArrayItem
 }) => {
   if (component.type !== 'cyber-timeline') return null
   return (
     <CyberTimelineEditor
       events={formData.events || []}
+      renderMoveControls={makeArrayMoveControls(moveArrayItem, 'events', (formData.events || []).length)}
       onAdd={() =>
         addArrayItem('events', {
           date: '2024',
@@ -329,12 +345,14 @@ const renderTestimonialsEditor: CustomEditorRenderer = ({
   addArrayItem,
   handleArrayFieldChange,
   removeArrayItem,
+  moveArrayItem,
   openAssetPickerWithValue
 }) => {
   if (component.type !== 'testimonials') return null
   return (
     <TestimonialsEditor
       testimonials={formData.testimonials || []}
+      renderMoveControls={makeArrayMoveControls(moveArrayItem, 'testimonials', (formData.testimonials || []).length)}
       onAdd={() =>
         addArrayItem('testimonials', {
           name: '客户姓名',
@@ -357,6 +375,7 @@ const renderLinkBlockEditor: CustomEditorRenderer = ({
   addArrayItem,
   handleArrayFieldChange,
   removeArrayItem,
+  moveArrayItem,
   handleFieldChange
 }) => {
   if (component.type !== 'link-block') return null
@@ -364,6 +383,7 @@ const renderLinkBlockEditor: CustomEditorRenderer = ({
   return (
     <LinkBlockEditor
       links={links}
+      renderMoveControls={makeArrayMoveControls(moveArrayItem, 'links', links.length)}
       onAdd={() => addArrayItem('links', { text: '', url: '' })}
       onChange={(index, fieldKey, value) => handleArrayFieldChange('links', index, fieldKey, value)}
       onRemove={(index) => removeArrayItem('links', index)}
@@ -501,6 +521,7 @@ const renderFeatureGridMultiEditor: CustomEditorRenderer = ({
   handleFieldChange,
   addArrayItem,
   removeArrayItem,
+  moveArrayItem,
   openAssetPickerWithValue,
   openNestedAssetPicker,
   isAssetUrl,
@@ -514,6 +535,31 @@ const renderFeatureGridMultiEditor: CustomEditorRenderer = ({
     next[index] = fn({ ...(next[index] || {}) })
     handleFieldChange('features', next)
   }
+  // 子功能排序：在 feature.items 内部移动
+  const moveSubItem = moveArrayItem
+    ? (featureIndex: number, from: number, to: number) => {
+        const feature = features[featureIndex] || {}
+        const subItems = [...(feature.items || [])]
+        if (from === to || from < 0 || to < 0 || from >= subItems.length || to >= subItems.length) return
+        const [moved] = subItems.splice(from, 1)
+        subItems.splice(to, 0, moved)
+        mutateFeature(featureIndex, (f) => ({ ...f, items: subItems }))
+      }
+    : undefined
+  const renderSubItemMoveControls =
+    moveSubItem && moveArrayItem
+      ? (featureIndex: number, itemIndex: number) => {
+          const subItems = (features[featureIndex]?.items || []) as any[]
+          return (
+            <ArrayMoveControls
+              onUp={() => moveSubItem(featureIndex, itemIndex, itemIndex - 1)}
+              onDown={() => moveSubItem(featureIndex, itemIndex, itemIndex + 1)}
+              isFirst={itemIndex <= 0}
+              isLast={itemIndex >= subItems.length - 1}
+            />
+          )
+        }
+      : undefined
   return (
     <FeatureGridMultiEditor
       features={features}
@@ -528,6 +574,7 @@ const renderFeatureGridMultiEditor: CustomEditorRenderer = ({
         })
       }
       onRemove={(index) => removeArrayItem('features', index)}
+      renderMoveControls={makeArrayMoveControls(moveArrayItem, 'features', features.length)}
       onAddSubItem={(index) => mutateFeature(index, (f) => ({ ...f, items: [...(f.items || []), { icon: '', text: '' }] }))}
       onRemoveSubItem={(index, itemIndex) =>
         mutateFeature(index, (f) => ({ ...f, items: (f.items || []).filter((_: any, k: number) => k !== itemIndex) }))
@@ -542,6 +589,7 @@ const renderFeatureGridMultiEditor: CustomEditorRenderer = ({
       openNestedAssetPicker={openNestedAssetPicker!}
       isAssetUrl={isAssetUrl}
       isSvgMarkup={isSvgMarkup}
+      renderSubItemMoveControls={renderSubItemMoveControls}
     />
   )
 }
@@ -552,6 +600,7 @@ const renderAccordionEditor: CustomEditorRenderer = ({
   handleFieldChange,
   addArrayItem,
   removeArrayItem,
+  moveArrayItem,
   openAssetPickerWithValue,
   openNestedAssetPicker
 }) => {
@@ -575,6 +624,7 @@ const renderAccordionEditor: CustomEditorRenderer = ({
         })
       }
       onRemove={(index) => removeArrayItem('items', index)}
+      renderMoveControls={makeArrayMoveControls(moveArrayItem, 'items', items.length)}
       onChange={(index, key, value) => mutateItem(index, (it) => ({ ...it, [key]: value }))}
       onAddMeta={(index) => mutateItem(index, (it) => ({ ...it, meta: [...(it.meta || []), { icon: '', text: '' }] }))}
       onRemoveMeta={(index, metaIndex) =>

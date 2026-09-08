@@ -1,10 +1,12 @@
 import React from 'react'
+import { Trash2 } from 'lucide-react'
 import { CustomEditorProps } from './editorRenderers'
 import { AssetPickerTarget } from '../hooks/useAssetPicker'
+import { makeArrayMoveControls } from './common/ArrayMoveControls'
 
 type Props = Pick<
   CustomEditorProps,
-  'formData' | 'handleFieldChange' | 'handleArrayFieldChange' | 'addArrayItem' | 'removeArrayItem' | 'openAssetPickerWithValue'
+  'formData' | 'handleFieldChange' | 'handleArrayFieldChange' | 'addArrayItem' | 'removeArrayItem' | 'moveArrayItem' | 'openAssetPickerWithValue'
 >
 
 const ProductShowcaseCardEditor: React.FC<Props> = ({
@@ -13,9 +15,11 @@ const ProductShowcaseCardEditor: React.FC<Props> = ({
   handleArrayFieldChange,
   addArrayItem,
   removeArrayItem,
+  moveArrayItem,
   openAssetPickerWithValue
 }) => {
   const cards = Array.isArray(formData.cards) ? formData.cards : []
+  const renderMoveControls = makeArrayMoveControls(moveArrayItem, 'cards', cards.length)
 
   return (
     <div className="space-y-5">
@@ -72,12 +76,14 @@ const ProductShowcaseCardEditor: React.FC<Props> = ({
           <div key={index} className="p-4 rounded-xl border border-theme-divider bg-theme-surfaceAlt space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-theme-textPrimary">卡片 {index + 1}</span>
+              {renderMoveControls?.(index)}
               <button
                 type="button"
                 onClick={() => removeArrayItem('cards', index)}
-                className="text-xs text-red-500 hover:underline"
+                className="p-1 text-red-500 hover:text-red-700"
+                title="删除"
               >
-                删除
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
 

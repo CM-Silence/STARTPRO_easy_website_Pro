@@ -13,6 +13,7 @@ interface BannerCarouselEditorProps {
   onAdd: () => void
   onChange: (index: number, fieldKey: string, value: any) => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
   onToggle: (key: 'autoPlay' | 'showIndicators' | 'showArrows', value: boolean) => void
   onIntervalChange: (value: number) => void
   openAssetPicker: (target: AssetPickerTarget, currentValue?: string) => void
@@ -24,6 +25,7 @@ const BannerCarouselEditor: React.FC<BannerCarouselEditorProps> = ({
   onAdd,
   onChange,
   onRemove,
+  renderMoveControls,
   onToggle,
   onIntervalChange,
   openAssetPicker
@@ -50,6 +52,7 @@ const BannerCarouselEditor: React.FC<BannerCarouselEditorProps> = ({
         <div key={index} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3 mb-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">幻灯片 {index + 1}</span>
+            {renderMoveControls?.(index)}
             <button onClick={() => onRemove(index)} className="p-1 text-red-500 hover:text-red-700">
               <Trash2 className="w-3 h-3" />
             </button>
@@ -146,8 +149,8 @@ const BannerCarouselEditor: React.FC<BannerCarouselEditorProps> = ({
             </select>
           </div>
 
-          {/* 文字颜色 */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* 文字颜色（标题/描述各占一行） */}
+          <div className="space-y-3">
             <div className="space-y-1">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">标题颜色</label>
               <div className="flex items-center space-x-2">
@@ -164,7 +167,7 @@ const BannerCarouselEditor: React.FC<BannerCarouselEditorProps> = ({
                   onBlur={(e) => onChange(index, 'titleColor', e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') onChange(index, 'titleColor', (e.target as HTMLInputElement).value) }}
                   placeholder="默认"
-                  className="flex-1 px-2 py-1 text-sm rounded theme-input"
+                  className="flex-1 min-w-0 px-2 py-1 text-sm rounded theme-input"
                 />
               </div>
             </div>
@@ -184,7 +187,7 @@ const BannerCarouselEditor: React.FC<BannerCarouselEditorProps> = ({
                   onBlur={(e) => onChange(index, 'descriptionColor', e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') onChange(index, 'descriptionColor', (e.target as HTMLInputElement).value) }}
                   placeholder="默认"
-                  className="flex-1 px-2 py-1 text-sm rounded theme-input"
+                  className="flex-1 min-w-0 px-2 py-1 text-sm rounded theme-input"
                 />
               </div>
             </div>

@@ -6,9 +6,10 @@ interface ContactFormEditorProps {
   onAdd: () => void
   onChange: (index: number, fieldKey: string, value: any) => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
 }
 
-const ContactFormEditor: React.FC<ContactFormEditorProps> = ({ fields, onAdd, onChange, onRemove }) => (
+const ContactFormEditor: React.FC<ContactFormEditorProps> = ({ fields, onAdd, onChange, onRemove, renderMoveControls }) => (
   <div className="mb-6">
     <div className="flex items-center justify-between mb-3">
       <h4 className="font-medium text-gray-900">表单字段</h4>
@@ -27,6 +28,7 @@ const ContactFormEditor: React.FC<ContactFormEditorProps> = ({ fields, onAdd, on
           <span className="text-sm font-medium text-gray-700">
             字段 {index + 1}
           </span>
+          {renderMoveControls?.(index)}
           <button onClick={() => onRemove(index)} className="p-1 text-red-500 hover:text-red-700">
             <Trash2 className="w-3 h-3" />
           </button>

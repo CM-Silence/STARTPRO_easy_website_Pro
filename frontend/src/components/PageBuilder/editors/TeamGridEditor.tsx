@@ -7,6 +7,7 @@ interface TeamGridEditorProps {
   onAdd: () => void
   onChange: (index: number, key: string, value: any) => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
   openAssetPicker: (target: AssetPickerTarget, currentValue?: string) => void
 }
 
@@ -15,6 +16,7 @@ const TeamGridEditor: React.FC<TeamGridEditorProps> = ({
   onAdd,
   onChange,
   onRemove,
+  renderMoveControls,
   openAssetPicker
 }) => {
   return (
@@ -35,6 +37,7 @@ const TeamGridEditor: React.FC<TeamGridEditorProps> = ({
           <div key={index} className="p-4 border border-theme-divider rounded-lg bg-theme-surface shadow-sm space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-700 dark:text-gray-300 font-medium truncate">成员 {index + 1}</div>
+              {renderMoveControls?.(index)}
               <button
                 onClick={() => onRemove(index)}
                 className="p-1 text-gray-400 hover:text-red-500 transition-colors"

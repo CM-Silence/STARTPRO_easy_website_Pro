@@ -6,6 +6,7 @@ interface PricingCardsEditorProps {
   onAdd: () => void
   onChange: (index: number, key: string, value: any) => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
   cardsPerRow?: number | string
   onCardsPerRowChange?: (value: any) => void
 }
@@ -15,6 +16,7 @@ const PricingCardsEditor: React.FC<PricingCardsEditorProps> = ({
   onAdd,
   onChange,
   onRemove,
+  renderMoveControls,
   cardsPerRow,
   onCardsPerRowChange
 }) => {
@@ -55,6 +57,7 @@ const PricingCardsEditor: React.FC<PricingCardsEditorProps> = ({
         <div key={index} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3 mb-3 bg-theme-surface">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">方案 {index + 1}</span>
+            {renderMoveControls?.(index)}
             <button onClick={() => onRemove(index)} className="p-1 text-red-500 hover:text-red-700">
               <Trash2 className="w-4 h-4" />
             </button>

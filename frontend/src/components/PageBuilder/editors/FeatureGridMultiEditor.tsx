@@ -8,8 +8,10 @@ interface FeatureGridMultiEditorProps {
   onChange: (index: number, fieldKey: 'icon' | 'title', value: any) => void
   onAdd: () => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
   onAddSubItem: (featureIndex: number) => void
   onRemoveSubItem: (featureIndex: number, itemIndex: number) => void
+  renderSubItemMoveControls?: (featureIndex: number, itemIndex: number) => React.ReactNode
   onSubItemChange: (featureIndex: number, itemIndex: number, fieldKey: 'icon' | 'text', value: any) => void
   openAssetPicker: (target: { fieldKey: string; arrayKey: string; arrayIndex: number }, currentValue?: string) => void
   openNestedAssetPicker: (handler: (asset: { url: string }) => void, currentValue?: string) => void
@@ -24,8 +26,10 @@ const FeatureGridMultiEditor: React.FC<FeatureGridMultiEditorProps> = ({
   onChange,
   onAdd,
   onRemove,
+  renderMoveControls,
   onAddSubItem,
   onRemoveSubItem,
+  renderSubItemMoveControls,
   onSubItemChange,
   openAssetPicker,
   openNestedAssetPicker,
@@ -67,6 +71,7 @@ const FeatureGridMultiEditor: React.FC<FeatureGridMultiEditorProps> = ({
         <div key={index} className="p-3 border border-gray-200 rounded-lg space-y-2 mb-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">功能 {index + 1}</span>
+            {renderMoveControls?.(index)}
             <button onClick={() => onRemove(index)} className="p-1 text-red-500 hover:text-red-700">
               <Trash2 className="w-3 h-3" />
             </button>
@@ -143,6 +148,7 @@ const FeatureGridMultiEditor: React.FC<FeatureGridMultiEditorProps> = ({
               <div key={itemIndex} className="p-2 border border-gray-100 rounded space-y-2 bg-gray-50">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-500">子功能 {itemIndex + 1}</span>
+                  {renderSubItemMoveControls?.(index, itemIndex)}
                   <button
                     onClick={() => onRemoveSubItem(index, itemIndex)}
                     className="p-1 text-red-500 hover:text-red-700"

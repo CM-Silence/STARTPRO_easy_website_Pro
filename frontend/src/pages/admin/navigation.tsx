@@ -359,6 +359,8 @@ export default function NavigationManagePage() {
   const [pages, setPages] = useState<PageContent[]>([])
   const [lang, setLang] = useState('zh')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
   const [syncOpen, setSyncOpen] = useState(false)
   const [syncIds, setSyncIds] = useState<string[]>([])
 
@@ -535,18 +537,97 @@ export default function NavigationManagePage() {
     setShowEditModal(true)
   }
 
+  /* ── 拖拽排序：仅允许同层级（相同父级）之间排序，落点后批量写入 sort_order ── */
+  const handleDragStart = (e: React.DragEvent, item: NavigationItem) => {
+    setDragId(String(item.id))
+    e.dataTransfer.effectAllowed = 'move'
+    // 使用自定义 MIME 类型，避免浏览器把拖拽内容当作文本提供「松开以搜索」
+    e.dataTransfer.setData('application/x-navigation-item', String(item.id))
+    // 让整个导航卡片作为拖拽影像跟随鼠标（而不是只有抓手图标）
+    const card = (e.currentTarget as HTMLElement).closest('[data-nav-card]') as HTMLElement | null
+    if (card) {
+      const rect = card.getBoundingClientRect()
+      e.dataTransfer.setDragImage(card, e.clientX - rect.left, e.clientY - rect.top)
+    }
+  }
+
+  const canDropOn = (target: NavigationItem) => {
+    if (!dragId || dragId === String(target.id)) return false
+    const dragItem = navItems.find(n => String(n.id) === dragId)
+    if (!dragItem) return false
+    return String(dragItem.parent_id ?? '') === String(target.parent_id ?? '')
+  }
+
+  const handleDragOver = (e: React.DragEvent, item: NavigationItem) => {
+    if (!canDropOn(item)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDropTargetId(String(item.id))
+  }
+
+  const clearDragState = () => {
+    setDragId(null)
+    setDropTargetId(null)
+  }
+
+  const handleDrop = async (e: React.DragEvent, target: NavigationItem) => {
+    e.preventDefault()
+    const sourceId = dragId
+    clearDragState()
+    if (!sourceId || sourceId === String(target.id)) return
+    const dragItem = navItems.find(n => String(n.id) === sourceId)
+    if (!dragItem || String(dragItem.parent_id ?? '') !== String(target.parent_id ?? '')) return
+
+    const parentKey = String(target.parent_id ?? '')
+    const siblings = navItems
+      .filter(n => String(n.parent_id ?? '') === parentKey)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+    const fromIdx = siblings.findIndex(n => String(n.id) === sourceId)
+    const toIdx = siblings.findIndex(n => String(n.id) === String(target.id))
+    if (fromIdx < 0 || toIdx < 0) return
+
+    siblings.splice(toIdx, 0, siblings.splice(fromIdx, 1)[0])
+
+    try {
+      const response = await navigationApi.updateSort(
+        siblings.map((n, i) => ({ id: String(n.id), sort_order: i }))
+      )
+      if (response.success) {
+        toast.success('导航顺序已更新')
+        fetchNavigation()
+      } else {
+        toast.error(response.message || '排序更新失败')
+      }
+    } catch (error) {
+      console.error('更新导航排序失败:', error)
+      toast.error('排序更新失败，请稍后重试')
+    }
+  }
+
   const renderNavItem = (item: NavigationItem, level = 0) => {
     const hasChildren = navItems.some(nav => nav.parent_id === item.id)
     const isExpanded = expandedItems.has(item.id)
     const children = navItems.filter(nav => nav.parent_id === item.id)
+    const isDragging = dragId === String(item.id)
+    const isDropTarget = dropTargetId === String(item.id) && dragId !== String(item.id)
 
     return (
-      <div key={item.id}>
+      <div
+        key={item.id}
+        onDragOver={(e) => handleDragOver(e, item)}
+        onDrop={(e) => handleDrop(e, item)}
+        onDragLeave={() => setDropTargetId((prev) => (prev === String(item.id) ? null : prev))}
+      >
         <motion.div
+          layout
+          data-nav-card
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 ${
+          transition={{ layout: { type: 'spring', stiffness: 400, damping: 35 } }}
+          className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-shadow ${
             level > 0 ? 'ml-8 mt-2' : 'mb-4'
+          } ${isDragging ? 'opacity-50' : ''} ${
+            isDropTarget ? 'ring-2 ring-tech-accent' : ''
           }`}
         >
           <div className="flex items-center justify-between">
@@ -558,7 +639,14 @@ export default function NavigationManagePage() {
                   onChange={() => toggleSelect(String(item.id))}
                   className="rounded border-gray-300"
                 />
-                <GripVertical className="w-4 h-4 text-gray-400 cursor-grab" />
+                <div
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, item)}
+                  onDragEnd={clearDragState}
+                  title="拖拽调整顺序（同层级内）"
+                >
+                  <GripVertical className="w-4 h-4 text-gray-400 cursor-grab active:cursor-grabbing" />
+                </div>
                 
                 {hasChildren && (
                   <button

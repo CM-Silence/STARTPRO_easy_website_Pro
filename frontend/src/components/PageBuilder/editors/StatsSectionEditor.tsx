@@ -7,6 +7,7 @@ interface StatsSectionEditorProps {
   onAdd: () => void
   onChange: (index: number, fieldKey: string, value: any) => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
   openAssetPicker: (target: AssetPickerTarget, currentValue?: string) => void
   isAssetUrl: (value?: string) => boolean
   isSvgMarkup: (value?: string) => boolean
@@ -20,6 +21,7 @@ const StatsSectionEditor: React.FC<StatsSectionEditorProps> = ({
   onAdd,
   onChange,
   onRemove,
+  renderMoveControls,
   openAssetPicker,
   isAssetUrl,
   isSvgMarkup,
@@ -74,7 +76,7 @@ const StatsSectionEditor: React.FC<StatsSectionEditorProps> = ({
               type="text"
               value={color}
               onChange={(e) => onFieldChange('textColor', e.target.value)}
-              className="w-32 px-2 py-1 text-sm rounded theme-input"
+              className="w-32 min-w-0 px-2 py-1 text-sm rounded theme-input"
               placeholder="#0ea5e9"
             />
           </div>
@@ -85,6 +87,7 @@ const StatsSectionEditor: React.FC<StatsSectionEditorProps> = ({
         <div key={index} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg space-y-2 mb-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">数据 {index + 1}</span>
+            {renderMoveControls?.(index)}
             <button onClick={() => onRemove(index)} className="p-1 text-red-500 hover:text-red-700">
               <Trash2 className="w-3 h-3" />
             </button>

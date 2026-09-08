@@ -11,6 +11,7 @@ import CyberShowcaseEditor from './editors/CyberShowcaseEditor'
 import CyberSuperCardEditor from './editors/CyberSuperCardEditor'
 import ContactFormEditor from './editors/ContactFormEditor'
 import { renderCustomEditor } from './editors/customEditors'
+import { makeArrayMoveControls } from './editors/common/ArrayMoveControls'
 import { WidthBackgroundEditor } from './editors/common/WidthBackgroundEditor'
 import { TextFieldsEditor } from './editors/common/TextFieldsEditor'
 import { MediaPickerField } from './editors/common/MediaPickerField'
@@ -93,6 +94,14 @@ const ComponentEditor = ({
   const addArrayItem = (arrayKey: string, template: any) => {
     const array = [...(formData[arrayKey] || [])]
     array.push({ ...template })
+    handleFieldChange(arrayKey, array)
+  }
+
+  const moveArrayItem = (arrayKey: string, from: number, to: number) => {
+    const array = [...(formData[arrayKey] || [])]
+    if (from === to || from < 0 || to < 0 || from >= array.length || to >= array.length) return
+    const [item] = array.splice(from, 1)
+    array.splice(to, 0, item)
     handleFieldChange(arrayKey, array)
   }
 
@@ -282,7 +291,7 @@ const ComponentEditor = ({
                   value={formData[key] || ''}
                   onChange={(e) => handleFieldChange(key, e.target.value)}
                   placeholder="如 #2563eb 或 rgba(...)"
-                  className="flex-1 px-3 py-2 rounded-lg theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
+                  className="flex-1 min-w-0 px-3 py-2 rounded-lg theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
                 />
               </div>
             ) : key === 'backgroundColor' ? (
@@ -297,7 +306,7 @@ const ComponentEditor = ({
                   type="text"
                   value={formData[key] || '#3B82F6'}
                   onChange={(e) => handleFieldChange(key, e.target.value)}
-                  className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg  theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
+                  className="w-32 min-w-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg  theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
                   placeholder="#3B82F6"
                 />
               </div>
@@ -461,6 +470,7 @@ const ComponentEditor = ({
           handleArrayFieldChange,
           addArrayItem,
           removeArrayItem,
+          moveArrayItem,
           openAssetPickerWithValue,
           openNestedAssetPicker,
           isAssetUrl,
@@ -529,6 +539,7 @@ const ComponentEditor = ({
                 <div key={`${logo.image || 'logo'}-${index}`} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg space-y-3 mb-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Logo {index + 1}</span>
+                    {makeArrayMoveControls(moveArrayItem, 'logos', (formData.logos || []).length)?.(index)}
                     <button onClick={() => removeArrayItem('logos', index)} className="p-1 text-red-500 hover:text-red-700">
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -586,6 +597,7 @@ const ComponentEditor = ({
         {component.type === 'contact-form' && (
           <ContactFormEditor
             fields={formData.fields || []}
+            renderMoveControls={makeArrayMoveControls(moveArrayItem, 'fields', (formData.fields || []).length)}
             onAdd={() => addArrayItem('fields', { name: 'field', label: '字段标签', type: 'text', required: false })}
             onChange={(index, key, value) => handleArrayFieldChange('fields', index, key, value)}
             onRemove={(index) => removeArrayItem('fields', index)}
@@ -595,6 +607,7 @@ const ComponentEditor = ({
         {component.type === 'faq-section' && (
           <FaqSectionEditor
             faqs={formData.faqs || []}
+            renderMoveControls={makeArrayMoveControls(moveArrayItem, 'faqs', (formData.faqs || []).length)}
             onAdd={() => addArrayItem('faqs', { question: 'Question', answer: 'Answer' })}
             onChange={(index, key, value) => handleArrayFieldChange('faqs', index, key, value)}
             onRemove={(index) => removeArrayItem('faqs', index)}
@@ -604,6 +617,7 @@ const ComponentEditor = ({
         {component.type === 'stats-section' && (
           <StatsSectionEditor
             stats={formData.stats || []}
+            renderMoveControls={makeArrayMoveControls(moveArrayItem, 'stats', (formData.stats || []).length)}
             onAdd={() => addArrayItem('stats', { label: '统计标签', value: '100+', icon: '📊' })}
             onChange={(index, key, value) => handleArrayFieldChange('stats', index, key, value)}
             onRemove={(index) => removeArrayItem('stats', index)}
@@ -619,6 +633,7 @@ const ComponentEditor = ({
         {component.type === 'cyber-showcase' && (
           <CyberShowcaseEditor
             controls={formData.controls || []}
+            renderMoveControls={makeArrayMoveControls(moveArrayItem, 'controls', (formData.controls || []).length)}
             onAdd={() =>
               addArrayItem('controls', {
                 id: 'control-' + Date.now(),
@@ -652,6 +667,7 @@ const ComponentEditor = ({
             />
             <CyberSuperCardEditor
               cards={formData.cards || []}
+              renderMoveControls={makeArrayMoveControls(moveArrayItem, 'cards', (formData.cards || []).length)}
               settings={{
                 cardsPerRow: formData.cardsPerRow ?? 3,
                 layoutMode: formData.layoutMode || 'default',

@@ -6,6 +6,7 @@ interface CyberTimelineEditorProps {
   onAdd: () => void
   onChange: (index: number, fieldKey: string, value: any) => void
   onRemove: (index: number) => void
+  renderMoveControls?: (index: number) => React.ReactNode
 }
 
 interface TimelineTagInput {
@@ -48,7 +49,8 @@ const CyberTimelineEditor: React.FC<CyberTimelineEditorProps> = ({
   events,
   onAdd,
   onChange,
-  onRemove
+  onRemove,
+  renderMoveControls
 }) => {
   return (
     <div className="mb-6">
@@ -94,6 +96,7 @@ const CyberTimelineEditor: React.FC<CyberTimelineEditorProps> = ({
           <div key={index} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4 mb-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">事件 {index + 1}</span>
+              {renderMoveControls?.(index)}
               <button onClick={() => onRemove(index)} className="p-1 text-red-500 hover:text-red-600">
                 <Trash2 className="w-4 h-4" />
               </button>

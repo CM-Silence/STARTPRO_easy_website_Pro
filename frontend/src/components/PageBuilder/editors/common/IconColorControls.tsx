@@ -70,7 +70,7 @@ export const IconColorControls: React.FC<IconColorControlsProps> = ({
               type="text"
               value={colorValue}
               onChange={(e) => onColorChange(e.target.value)}
-              className="w-32 px-3 py-2 border border-gray-300 rounded theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
+              className="w-32 min-w-0 px-3 py-2 border border-gray-300 rounded theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
               placeholder="#0ea5e9"
             />
           </div>
