@@ -35,4 +35,15 @@
 - 静态资源路径：`/uploads`（用户上传）、`/system-default`（内置素材）、`/ck-umd`（CKEditor 前端静态资源）。
 - 前台存在浏览器缓存体系（弱网回退）：版本接口 `GET /api/content/status`、缓存工具 `utils/dataCache.ts`(SWR)、图片 Service Worker `public/sw.js`、弱网横幅 `StaleDataBanner`，详见 [07](./07-浏览器缓存与弱网回退.md)。
 
+### 后台上账号与登录（2026-09 新增）
+
+后台登录采用 **Keycloak SSO（OIDC 授权码）+ 本地账号兜底** 的双通道方案，Wiki.js 风格的方法实例化管理：
+
+- **登录方法**：`local`（本地账号密码，固定保留、不可停用/删除）为默认；Keycloak 方法可动态新增（「登录管理」页左侧「新增登录方法」下拉框），连接配置（`ISSUER_URL` / `CLIENT_ID` / `CLIENT_SECRET`）在页面填写存库，**改完即时生效**。
+- **登录管理页** `/admin/auth`（仅 admin）：左侧方法列表 + 右侧配置面板（显示名、排序、启用开关、自动创建账号 + 自动分配角色组）。已启用且配置完整的方法才出现在登录页。
+- **账号认领/建户**：keycloak 方法开启「登录时自动创建账号」并指定角色组后，首登自动建户（按 `keycloak_id` → `email` 认领 → 建户）；关闭时仅已登记账号可登录、不覆盖本地角色。
+- **用户管理页** `/admin/users`（仅 admin）：受「本地登录-创建账号」开关控制——开即支持增删改查与角色分配，关则只读 + 改姓名。
+- 本地账号密码登录保留为 Keycloak 故障降级通道；Express `authenticateToken` 鉴权中间件与前端 401 refresh 机制不变。
+- 关键实现：`backend/src/utils/{authMethods,keycloakClient}.js`、`backend/src/routes/{auth-methods,keycloak,users}.js`、`frontend/src/pages/admin/auth.tsx`；接口清单见 [04](./04-后端接口文档.md)。
+
 > `init.sql` 已移除旧模板 seed 数据与临时视图工件，简化为纯建表 + 幂等多语言迁移；旧配置服务器运行一次即可对齐且不覆写数据（见 [03](./03-数据库设计.md#6-多语言增量迁移一次性对齐旧配置)）。
