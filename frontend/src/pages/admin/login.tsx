@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
-import { Eye, EyeOff, Lock, User, LogIn, KeyRound } from 'lucide-react'
+import { Eye, EyeOff, Lock, User, LogIn, KeyRound, ChevronLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
@@ -17,6 +17,7 @@ interface LoginMethod {
 
 export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false)
+  const [showLocalForm, setShowLocalForm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [methods, setMethods] = useState<LoginMethod[]>([])
   const { settings } = useSettings()
@@ -28,9 +29,11 @@ export default function AdminLogin() {
     formState: { errors }
   } = useForm<LoginForm>()
 
-  // 登录方法：本地显示账号密码表单，Keycloak 显示按钮
-  const localEnabled = methods.some((m) => m.type === 'local')
-  const ssoMethods = methods.filter((m) => m.type === 'keycloak')
+  // 登录方式展示规则
+  const isOnlyLocal = methods.length === 1 && methods[0].type === 'local' // 仅本地：直接显示表单
+  const showMethodPicker = methods.length > 1 // 多种方式：先显示各登录方式按钮
+  // 多种方式：点击本地后才显示表单
+  const showLocalFormArea = isOnlyLocal || (showMethodPicker && showLocalForm)
 
   // 检查是否已登录
   useEffect(() => {
@@ -140,27 +143,29 @@ export default function AdminLogin() {
             transition={{ duration: 0.6 }}
             className="bg-white rounded-2xl shadow-2xl p-8"
           >
-            {/* Logo和标题 */}
+            {/* 顶部：企业 Logo（圆角容器）+ 公司名称 */}
             <div className="text-center mb-8">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="mx-auto h-16 w-16 bg-gradient-to-r from-tech-accent to-tech-secondary rounded-xl flex items-center justify-center mb-4"
-              >
-                <Lock className="h-8 w-8 text-white" />
-              </motion.div>
-              
+              {settings?.site_logo ? (
+                <div className="mx-auto w-16 h-16 rounded-xl border border-gray-200 bg-white shadow-sm flex items-center justify-center p-2 mb-4">
+                  <img
+                    src={settings.site_logo}
+                    alt={settings.site_name || '公司 Logo'}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="mx-auto h-16 w-16 bg-gradient-to-r from-tech-accent to-tech-secondary rounded-xl flex items-center justify-center mb-4">
+                  <Lock className="h-8 w-8 text-white" />
+                </div>
+              )}
+
               <h2 className="text-3xl font-bold text-gray-900">
-                管理员登录
+                {settings?.site_name || '后台管理系统'}
               </h2>
-              <p className="mt-2 text-gray-600">
-                请使用您的管理员账户登录系统
-              </p>
             </div>
 
-            {/* 登录表单（本地登录启用时显示） */}
-            {localEnabled && (
+            {/* 账号密码表单（仅本地登录时直接显示；多种方式时点击本地按钮后显示） */}
+            {showLocalFormArea && (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* 用户名输入 */}
               <div>
@@ -250,25 +255,32 @@ export default function AdminLogin() {
             </form>
             )}
 
-            {localEnabled && ssoMethods.length > 0 && (
-              <div className="my-6 flex items-center">
-                <div className="flex-1 border-t border-gray-200"></div>
-                <span className="px-4 text-sm text-gray-400">或</span>
-                <div className="flex-1 border-t border-gray-200"></div>
-              </div>
+            {/* 多种登录方式时：从本地表单返回方式选择 */}
+            {showMethodPicker && showLocalForm && (
+              <button
+                type="button"
+                onClick={() => setShowLocalForm(false)}
+                className="w-full mt-8 inline-flex items-center justify-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />返回选择登录方式
+              </button>
             )}
 
-            {/* 单点登录按钮（登录管理页启用且配置完整的方法） */}
-            {ssoMethods.length > 0 && (
-              <div className={localEnabled ? 'space-y-3' : 'space-y-3 pt-2'}>
-                {ssoMethods.map((m) => (
+            {/* 多种登录方式时：登录方式按钮列表（初始显示；点本地后隐藏） */}
+            {showMethodPicker && !showLocalForm && (
+              <div className="space-y-3">
+                {methods.map((m) => (
                   <button
                     key={m.key}
                     type="button"
-                    onClick={() => startSsoLogin(m.key)}
+                    onClick={() => (m.type === 'local' ? setShowLocalForm(true) : startSsoLogin(m.key))}
                     className="w-full flex items-center justify-center space-x-2 py-3 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-tech-accent transition-colors focus:outline-none focus:ring-2 focus:ring-tech-accent focus:border-transparent"
                   >
-                    <KeyRound className="h-5 w-5" />
+                    {m.type === 'local' ? (
+                      <Lock className="h-5 w-5" />
+                    ) : (
+                      <KeyRound className="h-5 w-5" />
+                    )}
                     <span>{m.displayName}</span>
                   </button>
                 ))}

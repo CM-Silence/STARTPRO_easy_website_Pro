@@ -63,10 +63,11 @@ router.put('/:key',
         return res.status(400).json({ success: false, message: '本地登录方法不可停用' })
       }
 
-      // 护栏：开启「自动创建账号」时必须指定角色组
+      // 护栏：Keycloak 方法开启「自动创建账号」时必须指定角色组（本地方法无角色组概念）
+      const isKeycloak = authMethods.isKeycloakKey(key)
       const autoCreate = req.body.autoCreate ?? current.autoCreate
       const autoCreateRole = req.body.autoCreateRole ?? current.autoCreateRole
-      if (autoCreate && !autoCreateRole) {
+      if (isKeycloak && autoCreate && !autoCreateRole) {
         return res.status(400).json({ success: false, message: '开启自动创建账号时需选择自动分配的角色组' })
       }
 
