@@ -21,7 +21,8 @@ import {
   Inbox,
   Key,
   Newspaper,
-  Languages
+  Languages,
+  Users
 } from 'lucide-react'
 import { authApi, clearAccessToken, getAccessToken, setAccessToken } from '@/utils/api'
 import { getThemeById, defaultTheme, resolveBackgroundEffect, type ThemeBackgroundChoice } from '@/styles/themes'
@@ -42,6 +43,7 @@ interface MenuItem {
   href: string
   icon: ReactNode
   children?: MenuItem[]
+  adminOnly?: boolean
 }
 
 const menuItems: MenuItem[] = [
@@ -83,22 +85,39 @@ const menuItems: MenuItem[] = [
   {
     label: '通知设置',
     href: '/admin/notifications',
-    icon: <Bell className="w-5 h-5" />
+    icon: <Bell className="w-5 h-5" />,
+    adminOnly: true
   },
   {
     label: '通知记录',
     href: '/admin/notifications/messages',
-    icon: <Inbox className="w-5 h-5" />
+    icon: <Inbox className="w-5 h-5" />,
+    adminOnly: true
   },
   {
     label: 'AI 接入',
     href: '/admin/ai-settings',
-    icon: <Sparkles className="w-5 h-5" />
+    icon: <Sparkles className="w-5 h-5" />,
+    adminOnly: true
   },
   {
     label: '语言管理',
     href: '/admin/languages',
     icon: <Languages className="w-5 h-5" />
+  },
+  {
+    // 仅管理员可见（账号/角色归 Keycloak 管理，此处仅查看与编辑非关键资料）
+    label: '用户管理',
+    href: '/admin/users',
+    icon: <Users className="w-5 h-5" />,
+    adminOnly: true
+  },
+  {
+    // 仅管理员可见：管理登录方式（本地/Keycloak）的启用与账号创建策略
+    label: '登录管理',
+    href: '/admin/auth',
+    icon: <Key className="w-5 h-5" />,
+    adminOnly: true
   },
   {
     label: '系统设置',
@@ -121,6 +140,20 @@ export default function AdminLayout({
   const router = useRouter()
 
   const pageTitle = title === '后台管理' ? title : `${title} - 后台管理`
+
+  // 用户显示名（姓+名，回退 username）与头像首字符
+  const userDisplayName = ([user?.last_name, user?.first_name].filter(Boolean).join('')) || user?.username || ''
+  const userInitial = userDisplayName ? userDisplayName.charAt(0).toUpperCase() : ''
+
+  // 强调色实心圆头像
+  const Avatar = ({ size = 'w-8 h-8', text = 'text-sm' }: { size?: string; text?: string }) => (
+    <div
+      className={`${size} rounded-full flex items-center justify-center text-white select-none ${text}`}
+      style={{ backgroundColor: 'var(--color-accent)' }}
+    >
+      {userInitial}
+    </div>
+  )
 
   // 检查认证状态
   const refreshUserProfile = async (): Promise<void> => {
@@ -270,7 +303,9 @@ export default function AdminLayout({
 
           {/* 导航菜单 */}
           <nav className="flex-1 px-4 py-6 space-y-2">
-            {menuItems.map((item) => (
+            {menuItems
+              .filter((item) => !item.adminOnly || user?.role === 'admin')
+              .map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -286,19 +321,6 @@ export default function AdminLayout({
               </Link>
             ))}
           </nav>
-
-          {/* 底部用户信息 */}
-          <div className="p-4">
-            <div className="flex items-center space-x-3 text-sm text-theme-textSecondary">
-              <div className="w-8 h-8 bg-theme-surfaceAlt rounded-full flex items-center justify-center text-theme-text">
-                <User className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-theme-text font-medium">{user?.username}</p>
-                <p className="text-xs text-theme-textSecondary">{user?.role}</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* 涓诲唴瀹瑰尯鍩?*/}
@@ -327,11 +349,9 @@ export default function AdminLayout({
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center space-x-3 p-2 rounded-lg text-theme-textSecondary hover:text-theme-text transition-colors"
                 >
-                  <div className="w-8 h-8 bg-semantic-mutedBg rounded-full flex items-center justify-center text-theme-primary">
-                    <User className="w-4 h-4" />
-                  </div>
+                  <Avatar />
                   <span className="hidden md:block text-sm font-medium">
-                    {user?.username}
+                    {([user?.last_name, user?.first_name].filter(Boolean).join('')) || user?.username || ''}
                   </span>
                   <ChevronDown className="w-4 h-4" />
                 </button>
@@ -342,12 +362,13 @@ export default function AdminLayout({
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 mt-2 w-48 bg-semantic-panel rounded-lg shadow-lg z-[1200] border border-semantic-panelBorder backdrop-blur-sm"
+                      className="absolute right-0 mt-2 w-72 rounded-lg shadow-lg z-[1200]"
+                      style={{ backgroundColor: 'var(--semantic-panel-bg)', border: '1px solid var(--semantic-panel-border)' }}
                     >
                       <div className="py-2">
                         <div className="px-4 py-2">
                           <p className="text-sm font-medium text-theme-text">
-                            {user?.username}
+                            {([user?.last_name, user?.first_name].filter(Boolean).join('')) || user?.username || ''}
                           </p>
                           <p className="text-xs text-theme-textSecondary">
                             {user?.email}

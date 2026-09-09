@@ -68,7 +68,10 @@ class ApiClient {
         const status = error.response?.status
         const originalRequest = error.config as (AxiosRequestConfig & { _retry?: boolean; url?: string })
         const url = typeof originalRequest?.url === 'string' ? originalRequest.url : ''
-        const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/refresh')
+        const isAuthEndpoint =
+          url.includes('/auth/login') ||
+          url.includes('/auth/refresh') ||
+          url.includes('/auth/sso-exchange')
         const suppressAuthToasts = isAuthEndpoint && status === 401
 
         if (status === 401 && typeof window !== 'undefined' && !isAuthEndpoint && !originalRequest._retry) {
@@ -172,6 +175,12 @@ export const authApi = {
   updateProfile: (data: any) => api.put('/auth/profile', data),
 
   checkAuth: () => api.get('/auth/check'),
+
+  // 登录方法（登录页用，公开：仅返回已启用且配置完整的方法）
+  getMethods: () => api.get('/auth/keycloak/methods'),
+
+  // Keycloak SSO：一次性 code 换取本地会话
+  ssoExchange: (code: string) => api.post('/auth/sso-exchange', { code }),
 }
 
 export const pagesApi = {
@@ -324,6 +333,79 @@ export const tagsApi = {
     const response = await api.post(`/tags/page/${pageId}`, { tagIds })
     return response
   }
+}
+
+// 后台用户管理行（账号/角色/密码由 Keycloak 管理，本地只读展示）
+export interface AdminUserRow {
+  id: number
+  username: string
+  email: string | null
+  first_name: string | null
+  last_name: string | null
+  role: 'admin' | 'editor' | 'viewer'
+  auth_provider: 'local' | 'keycloak'
+  language: string | null
+  created_at: string
+  last_login: string | null
+}
+
+// 用户活动日志行
+export interface UserActivityRow {
+  id: number
+  action: string
+  resource_type: string | null
+  resource_id: string | null
+  description: string | null
+  ip_address: string | null
+  created_at: string
+}
+
+export const usersApi = {
+  list: (params?: { page?: number; limit?: number; search?: string }) =>
+    api.get('/users', { params }) as Promise<PaginatedResponse<AdminUserRow> & { canManage?: boolean }>,
+
+  create: (data: { username: string; email: string; password: string; role: string; firstName?: string; lastName?: string }) =>
+    api.post('/users', data),
+
+  update: (id: number | string, data: { firstName?: string; lastName?: string; language?: string; email?: string; role?: string }) =>
+    api.put(`/users/${id}`, data),
+
+  delete: (id: number | string) =>
+    api.delete(`/users/${id}`),
+
+  activity: (id: number | string, params?: { limit?: number }) =>
+    api.get(`/users/${id}/activity`, { params }),
+}
+
+// 登录方法管理（admin；Wiki.js 风格，方法实例存数据库）
+export interface AuthMethodConfig {
+  issuer: string
+  clientId: string
+  clientSecret: string
+}
+
+export interface AuthMethodRow {
+  key: string
+  type: 'local' | 'keycloak'
+  displayName: string
+  isEnabled: boolean
+  sortOrder: number
+  autoCreate: boolean
+  autoCreateRole: 'admin' | 'editor' | 'viewer' | null
+  config: AuthMethodConfig
+  configured: boolean
+}
+
+export const authMethodsApi = {
+  list: () => api.get('/auth-methods') as Promise<ApiResponse<AuthMethodRow[]>>,
+
+  create: (data: { type: 'keycloak'; displayName?: string }) =>
+    api.post('/auth-methods', data),
+
+  update: (key: string, data: { displayName?: string; isEnabled?: boolean; sortOrder?: number; autoCreate?: boolean; autoCreateRole?: string | null; config?: Partial<AuthMethodConfig> }) =>
+    api.put(`/auth-methods/${key}`, data),
+
+  delete: (key: string) => api.delete(`/auth-methods/${key}`),
 }
 
 export const aiApi = {
