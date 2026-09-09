@@ -377,10 +377,77 @@ const newsSchemas = {
   }).unknown(true)
 }
 
+// 登录方法管理校验
+const authMethodSchemas = {
+  update: Joi.object({
+    displayName: Joi.string().max(100).optional(),
+    isEnabled: Joi.boolean().optional(),
+    sortOrder: Joi.number().integer().min(0).max(999).optional(),
+    autoCreate: Joi.boolean().optional(),
+    autoCreateRole: Joi.string().valid('admin', 'editor', 'viewer').allow(null, '').optional(),
+    config: Joi.object({
+      issuer: Joi.string().uri().max(255).allow('').optional(),
+      clientId: Joi.string().max(128).allow('').optional(),
+      clientSecret: Joi.string().max(255).allow('').optional()
+    }).optional()
+  }),
+  create: Joi.object({
+    type: Joi.string().valid('keycloak').required(),
+    displayName: Joi.string().max(100).optional()
+  }),
+  methodKey: Joi.object({
+    key: Joi.string().pattern(/^(local|[a-z0-9-]{6,32})$/).required()
+  }).unknown(true)
+}
+
+// 用户管理与 SSO 校验
+const userManageSchemas = {
+  ssoExchange: Joi.object({
+    code: Joi.string().pattern(/^[A-Za-z0-9_-]{32,128}$/).required()
+  }),
+  // 后台仅允许编辑非关键资料（账号/角色/密码归 Keycloak 管理）
+  adminUpdateUser: Joi.object({
+    firstName: Joi.string().max(50).allow('', null).optional(),
+    lastName: Joi.string().max(50).allow('', null).optional(),
+    language: Joi.string().max(10).allow('', null).optional(),
+    // 以下字段仅在「本地登录-创建账号」开启时可传（users.js 内检查开关后生效）
+    email: Joi.string().email().max(100).optional(),
+    role: Joi.string().valid('admin', 'editor', 'viewer').optional()
+  }),
+  createUser: Joi.object({
+    username: Joi.string().pattern(/^[a-zA-Z0-9_-]+$/).min(3).max(50).required(),
+    email: Joi.string().email().max(100).required(),
+    password: Joi.string().min(6).max(100).required(),
+    role: Joi.string().valid('admin', 'editor', 'viewer').default('editor'),
+    firstName: Joi.string().max(50).allow('', null).optional(),
+    lastName: Joi.string().max(50).allow('', null).optional()
+  }),
+  idParam: Joi.object({
+    id: Joi.number().integer().positive().required()
+  }).unknown(true),
+  userListQuery: Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(20),
+    search: Joi.string().max(100).allow('', null).optional()
+  }).unknown(true),
+  userActivityQuery: Joi.object({
+    limit: Joi.number().integer().min(1).max(200).default(50)
+  }).unknown(true)
+}
+
 module.exports = {
   validate,
   validateLogin: validate(userSchemas.login),
   validateUpdateProfile: validate(userSchemas.updateProfile),
+  validateSsoExchange: validate(userManageSchemas.ssoExchange),
+  validateAdminUpdateUser: validate(userManageSchemas.adminUpdateUser),
+  validateCreateUser: validate(userManageSchemas.createUser),
+  validateIdParam: validate(userManageSchemas.idParam, 'params'),
+  validateAuthMethodUpdate: validate(authMethodSchemas.update),
+  validateAuthMethodCreate: validate(authMethodSchemas.create),
+  validateAuthMethodKey: validate(authMethodSchemas.methodKey, 'params'),
+  validateUserListQuery: validate(userManageSchemas.userListQuery, 'query'),
+  validateUserActivityQuery: validate(userManageSchemas.userActivityQuery, 'query'),
   validateCreatePage: validate(pageSchemas.create),
   validateUpdatePage: validate(pageSchemas.update),
   validateUpdateSettings: validate(settingsSchemas.update),

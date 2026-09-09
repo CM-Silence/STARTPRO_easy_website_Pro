@@ -147,6 +147,9 @@ const aiRoutes = require('./routes/ai')
 const newsRoutes = require('./routes/news')
 const languagesRoutes = require('./routes/languages')
 const contentStatusRoutes = require('./routes/content-status')
+const keycloakRoutes = require('./routes/keycloak')
+const usersRoutes = require('./routes/users')
+const authMethodsRoutes = require('./routes/auth-methods')
 
 normalizeSystemDefaultSvgs()
   .then(summary => {
@@ -158,6 +161,8 @@ normalizeSystemDefaultSvgs()
     console.warn('[SVG] Failed to normalize system-default SVGs:', error.message)
   })
 
+// Keycloak SSO 路由需先于 /api/auth 挂载（路径前缀更具体）
+app.use('/api/auth/keycloak', keycloakRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/pages', pagesRoutes)
 app.use('/api/navigation', navigationRoutes)
@@ -173,6 +178,8 @@ app.use('/api/ai', aiRoutes)
 app.use('/api/news', newsRoutes)
 app.use('/api/languages', languagesRoutes)
 app.use('/api/content', contentStatusRoutes)
+app.use('/api/users', usersRoutes)
+app.use('/api/auth-methods', authMethodsRoutes)
 
 // 健康检查端点
 app.get('/api/health', (req, res) => {

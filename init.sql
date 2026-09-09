@@ -720,3 +720,30 @@ SET @_s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA
 PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
 SET @_s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='docs' AND COLUMN_NAME='is_synced')=0, 'ALTER TABLE docs ADD COLUMN `is_synced` tinyint(1) NOT NULL DEFAULT 0 COMMENT ''AI同步到所有语言'' AFTER `lang`', 'SELECT 1');
 PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------- Keycloak SSO 桥接：users 增加 keycloak_id / auth_provider（幂等） ----------
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='keycloak_id')=0, 'ALTER TABLE users ADD COLUMN `keycloak_id` varchar(64) DEFAULT NULL COMMENT ''Keycloak sub'' AFTER `role`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='auth_provider')=0, 'ALTER TABLE users ADD COLUMN `auth_provider` enum(''local'',''keycloak'') NOT NULL DEFAULT ''local'' COMMENT ''账号来源'' AFTER `keycloak_id`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND INDEX_NAME='uq_users_keycloak_id')=0, 'ALTER TABLE users ADD UNIQUE KEY `uq_users_keycloak_id` (`keycloak_id`)', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------- 登录管理：认证方法表（Wiki.js 风格；连接凭证在 .env，开关在库） ----------
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='auth_methods')=0,
+  'CREATE TABLE `auth_methods` (
+    `method_key` varchar(32) NOT NULL COMMENT ''方法标识: local / keycloak-editor / keycloak-admin'',
+    `display_name` varchar(100) NOT NULL COMMENT ''登录页显示名'',
+    `is_enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT ''是否启用'',
+    `sort_order` int NOT NULL DEFAULT 0 COMMENT ''登录页排序'',
+    `auto_create` tinyint(1) NOT NULL DEFAULT 0 COMMENT ''创建账号: local=允许后台增删账号; keycloak=首登自动建户'',
+    `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`method_key`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT=''登录方法配置''', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- ---------- 登录管理升级：Keycloak 方法实例化（连接配置入库存，可动态新增） ----------
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='auth_methods' AND COLUMN_NAME='config')=0, 'ALTER TABLE auth_methods ADD COLUMN `config` json DEFAULT NULL COMMENT ''方法专属配置(Keycloak: issuer/clientId/clientSecret)'' AFTER `auto_create`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;
+SET @_s = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='auth_methods' AND COLUMN_NAME='auto_create_role')=0, 'ALTER TABLE auth_methods ADD COLUMN `auto_create_role` varchar(16) DEFAULT NULL COMMENT ''自动建户时分配的角色组(admin/editor/viewer)'' AFTER `config`', 'SELECT 1');
+PREPARE st FROM @_s; EXECUTE st; DEALLOCATE PREPARE st;

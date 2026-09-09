@@ -20,7 +20,6 @@
     "@fortawesome/free-brands-svg-icons": "^7.1.0",
     "@tabler/icons-react": "^3.35.0",
     "all": "^0.0.0",
-    "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "bootstrap-icons": "^1.13.1",
     "compression": "^1.7.4",
@@ -35,6 +34,7 @@
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.6.5",
     "nodemailer": "^7.0.13",
+    "openid-client": "^5.7.1",
     "sharp": "^0.34.5"
   },
   "devDependencies": {

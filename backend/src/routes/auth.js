@@ -11,8 +11,10 @@ const {
 } = require('../middleware/auth')
 const {
   validateLogin,
-  validateUpdateProfile
+  validateUpdateProfile,
+  validateSsoExchange
 } = require('../middleware/validation')
+const kc = require('../utils/keycloakClient')
 
 const REFRESH_COOKIE_NAME = 'refresh-token'
 const REFRESH_TOKEN_DAYS = Number(process.env.REFRESH_TOKEN_EXPIRES_DAYS || 30)
@@ -80,8 +82,6 @@ router.post('/login', validateLogin, async (req, res) => {
   try {
     const { username, password } = req.body
 
-    console.log('调试登录:', { username, password }) // 调试日志
-
     // 查找用户
     const [users] = await db.execute(
       'SELECT id, username, password, email, role FROM users WHERE username = ?',
@@ -89,7 +89,6 @@ router.post('/login', validateLogin, async (req, res) => {
     )
 
     if (users.length === 0) {
-      console.log('用户不存在:', username) // 调试日志
       return res.status(401).json({
         success: false,
         message: '用户名或密码错误'
@@ -98,15 +97,10 @@ router.post('/login', validateLogin, async (req, res) => {
 
     const user = users[0]
 
-    console.log('数据库中的密码:', user.password) // 调试日志
-    console.log('输入的密码:', password) // 调试日志
-
     // 验证密码
     const isValidPassword = await bcrypt.compare(password, user.password)
-    console.log('密码匹配结果:', isValidPassword) // 调试日志
-    
+
     if (!isValidPassword) {
-      console.log('密码不匹配') // 调试日志
       return res.status(401).json({
         success: false,
         message: '用户名或密码错误'
@@ -157,6 +151,53 @@ router.post('/login', validateLogin, async (req, res) => {
   }
 })
 
+
+// SSO 一次性 code 换取本地会话（由 /admin/sso 中转页调用，与 /login 响应同构）
+router.post('/sso-exchange', validateSsoExchange, async (req, res) => {
+  try {
+    const userId = kc.consumeSsoCode(req.body.code)
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'SSO 凭证无效或已过期，请重新登录'
+      })
+    }
+
+    const [users] = await db.execute(
+      'SELECT id, username, email, role FROM users WHERE id = ?',
+      [userId]
+    )
+    if (users.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'SSO 凭证无效或已过期，请重新登录'
+      })
+    }
+
+    const user = users[0]
+    const { accessToken } = await issueAuthTokens({ userId: user.id, req, res })
+
+    res.json({
+      success: true,
+      message: '登录成功',
+      data: {
+        token: accessToken,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role
+        }
+      }
+    })
+  } catch (error) {
+    console.error('SSO 凭证交换失败:', error)
+    res.status(500).json({
+      success: false,
+      message: '登录失败，请稍后重试'
+    })
+  }
+})
 
 // 获取当前用户信息
 // Refresh access token using HttpOnly refresh cookie (also rotates refresh token)
@@ -245,6 +286,20 @@ router.put('/profile', authenticateToken, validateUpdateProfile, async (req, res
     const { email, currentPassword, newPassword, firstName, lastName, language } = req.body
     const updates = []
     const values = []
+
+    // Keycloak 用户的账号字段（邮箱/密码）由单点登录系统管理
+    if (email || newPassword) {
+      const [providers] = await db.execute(
+        'SELECT auth_provider FROM users WHERE id = ?',
+        [req.user.id]
+      )
+      if (providers.length > 0 && providers[0].auth_provider === 'keycloak') {
+        return res.status(400).json({
+          success: false,
+          message: '单点登录账号的邮箱与密码请在 Keycloak 系统中修改'
+        })
+      }
+    }
 
     // 更新邮箱
     if (email) {
