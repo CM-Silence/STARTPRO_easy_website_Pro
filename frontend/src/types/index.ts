@@ -76,6 +76,9 @@ export interface User {
   username: string
   email: string
   role: 'admin' | 'editor' | 'viewer'
+  first_name?: string | null
+  last_name?: string | null
+  language?: string
   created_at: string
   last_login?: string
 }

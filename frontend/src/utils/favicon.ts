@@ -16,8 +16,6 @@ const getApiBaseUrl = () => {
 export const updateFavicon = (faviconUrl: string) => {
   if (typeof window === 'undefined') return
 
-  console.log('更新favicon:', faviconUrl)
-
   const managedAttrSelector = "[data-managed='site-favicon']"
   const ensureLink = (rel: string, id?: string) => {
     let link = (id
@@ -52,8 +50,6 @@ export const updateFavicon = (faviconUrl: string) => {
     finalFaviconUrl = `/${faviconUrl}`
   }
 
-  console.log('最终favicon URL:', finalFaviconUrl)
-
   // 创建/更新 favicon 元素（前台页面可能没有任何 <link rel="icon">）
   const faviconElement = ensureLink('icon', 'favicon')
   const shortcutIconElement = ensureLink('shortcut icon')
@@ -81,15 +77,11 @@ export const updateTitle = (title: string) => {
 export const updateOGMeta = (siteName: string, description: string, logoUrl?: string) => {
   if (typeof window === 'undefined') return
 
-  console.log('更新OG信息:', { siteName, description, logoUrl })
-
   // 由于Next.js已经配置了uploads代理，直接使用路径即可
   let finalLogoUrl = logoUrl
   if (logoUrl && !logoUrl.startsWith('/') && !logoUrl.startsWith('http')) {
     finalLogoUrl = `/${logoUrl}`
   }
-
-  console.log('最终logo URL:', finalLogoUrl)
 
   // 更新 og:title
   const ogTitle = document.querySelector('meta[property="og:title"]') as HTMLMetaElement

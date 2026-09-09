@@ -10,18 +10,15 @@ export const useMetaInfo = () => {
 
   useEffect(() => {
     if (!isLoading && settings) {
-      console.log('开始更新网站元信息:', settings)
-      
+
       // 更新favicon（仅当用户上传了自定义路径时）
       if (settings.site_favicon) {
-        console.log('更新favicon:', settings.site_favicon)
         updateFavicon(settings.site_favicon)
       }
 
       // 更新页面标题（非 docs 页）；docs 页内部会自定义标题
       const isDocsPage = typeof window !== 'undefined' && window.location.pathname.startsWith('/docs')
       if (!isDocsPage && settings.site_name) {
-        console.log('更新页面标题:', settings.site_name)
         updateTitle(settings.site_name)
       }
 
@@ -32,7 +29,6 @@ export const useMetaInfo = () => {
         settings.site_logo
       )
     } else if (!isLoading) {
-      console.log('设置为空，使用默认值')
       // 未设置 favicon 时不强行指定，由浏览器自行处理
       updateTitle('科技公司官网')
     }

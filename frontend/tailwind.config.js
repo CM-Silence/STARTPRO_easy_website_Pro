@@ -53,11 +53,42 @@ module.exports = {
           surfaceAlt: 'var(--color-surface-alt)',
           border: 'var(--color-text-muted)',
         },
+        // 主题动态色板（themes.ts 运行时注入 --color-*-rgb 通道值；<alpha-value> 支持 bg-theme-x/60 等透明度写法）
+        theme: {
+          primary: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
+          secondary: 'rgb(var(--color-secondary-rgb) / <alpha-value>)',
+          accent: 'rgb(var(--color-accent-rgb) / <alpha-value>)',
+          background: 'rgb(var(--color-background-rgb) / <alpha-value>)',
+          surface: 'rgb(var(--color-surface-rgb) / <alpha-value>)',
+          surfaceAlt: 'rgb(var(--color-surface-alt-rgb) / <alpha-value>)',
+          text: 'rgb(var(--color-text-primary-rgb) / <alpha-value>)',
+          textPrimary: 'rgb(var(--color-text-primary-rgb) / <alpha-value>)',
+          textSecondary: 'rgb(var(--color-text-secondary-rgb) / <alpha-value>)',
+          textMuted: 'rgb(var(--color-text-muted-rgb) / <alpha-value>)',
+          divider: 'rgb(var(--color-divider-rgb) / <alpha-value>)',
+          border: 'rgb(var(--color-border-rgb) / <alpha-value>)',
+        },
+        semantic: {
+          cta: {
+            primary: 'rgb(var(--semantic-cta-primary-bg-rgb) / <alpha-value>)',
+            secondary: { border: 'var(--semantic-cta-secondary-border)' },
+          },
+          hero: { accent: 'rgb(var(--semantic-hero-accent-rgb) / <alpha-value>)' },
+          mutedBg: 'rgb(var(--semantic-muted-bg-rgb) / <alpha-value>)',
+          panel: 'rgb(var(--semantic-panel-bg-rgb) / <alpha-value>)',
+          panelBorder: 'rgb(var(--semantic-panel-border-rgb) / <alpha-value>)',
+          tagBg: 'var(--semantic-tag-bg)',
+          tagText: 'var(--semantic-tag-text)',
+          dividerStrong: 'var(--semantic-divider-strong)',
+        },
         text: {
           primary: 'var(--color-text-primary)',
           secondary: 'var(--color-text-secondary)',
           muted: 'var(--color-text-muted)',
         }
+      },
+      boxShadow: {
+        semantic: '0 2px 8px rgb(0 0 0 / 0.12)',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

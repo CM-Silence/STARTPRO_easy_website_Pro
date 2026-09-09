@@ -11,12 +11,20 @@ import {
   Eye,
   Calendar
 } from 'lucide-react'
-import { statsApi } from '@/utils/api'
+import { statsApi, authApi } from '@/utils/api'
 import type { Stats } from '@/types'
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
+
+  useEffect(() => {
+    authApi
+      .getProfile()
+      .then((r: any) => r?.success && setUser(r.data))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -54,7 +62,9 @@ export default function AdminDashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-theme-surfaceAlt border border-semantic-panelBorder rounded-lg p-6 text-theme-text shadow-md"
         >
-          <h1 className="text-2xl font-bold mb-2">欢迎回来！</h1>
+          <h1 className="text-2xl font-bold mb-2">
+            欢迎回来，{([user?.last_name, user?.first_name].filter(Boolean).join('')) || user?.username || ''}！
+          </h1>
           <p className="text-theme-textSecondary">
             今天是 {new Date().toLocaleDateString('zh-CN', { 
               year: 'numeric', 

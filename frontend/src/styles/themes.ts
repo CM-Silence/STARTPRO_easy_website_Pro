@@ -1285,6 +1285,20 @@ export const getThemeById = (id: string): ColorTheme => {
 export const applyTheme = (theme: ColorTheme, overrides?: ThemeOverrides) => {
   const root = document.documentElement
 
+  // hex/rgb 颜色 → "r, g, b" 通道值（供 Tailwind <alpha-value> 工具类生成透明度变体）
+  const toRgbChannels = (value: string): string => {
+    const v = String(value || '').trim()
+    const hex = /^#([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(v)
+    if (hex) {
+      const raw = hex[1]
+      const full = raw.length === 3 ? raw.split('').map(c => c + c).join('') : raw
+      return `${parseInt(full.slice(0, 2), 16)}, ${parseInt(full.slice(2, 4), 16)}, ${parseInt(full.slice(4, 6), 16)}`
+    }
+    const rgb = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(v)
+    if (rgb) return `${rgb[1]}, ${rgb[2]}, ${rgb[3]}`
+    return '255, 255, 255'
+  }
+
   root.classList.remove(...colorThemes.map(t => `theme-${t.id}`))
   root.classList.remove(`theme-${CUSTOM_THEME_ID}`)
   root.classList.add(`theme-${theme.id}`)
@@ -1320,6 +1334,24 @@ export const applyTheme = (theme: ColorTheme, overrides?: ThemeOverrides) => {
   root.style.setProperty('--semantic-muted-bg', resolvedTheme.semantic.mutedBg)
   root.style.setProperty('--semantic-divider-strong', resolvedTheme.semantic.dividerStrong)
   root.style.setProperty('--semantic-highlight', resolvedTheme.semantic.highlight)
+
+  // RGB 通道变量（供 tailwind bg-theme-x/透明度 等工具类使用）
+  root.style.setProperty('--color-primary-rgb', toRgbChannels(resolvedTheme.colors.primary))
+  root.style.setProperty('--color-secondary-rgb', toRgbChannels(resolvedTheme.colors.secondary))
+  root.style.setProperty('--color-accent-rgb', toRgbChannels(resolvedTheme.colors.accent))
+  root.style.setProperty('--color-background-rgb', toRgbChannels(resolvedTheme.colors.background))
+  root.style.setProperty('--color-surface-rgb', toRgbChannels(resolvedTheme.colors.surface))
+  root.style.setProperty('--color-surface-alt-rgb', toRgbChannels(resolvedTheme.neutral.surfaceAlt))
+  root.style.setProperty('--color-text-primary-rgb', toRgbChannels(resolvedTheme.colors.text.primary))
+  root.style.setProperty('--color-text-secondary-rgb', toRgbChannels(resolvedTheme.colors.text.secondary))
+  root.style.setProperty('--color-text-muted-rgb', toRgbChannels(resolvedTheme.colors.text.muted))
+  root.style.setProperty('--color-border-rgb', toRgbChannels(resolvedTheme.neutral.border))
+  root.style.setProperty('--color-divider-rgb', toRgbChannels(resolvedTheme.neutral.divider))
+  root.style.setProperty('--semantic-muted-bg-rgb', toRgbChannels(resolvedTheme.semantic.mutedBg))
+  root.style.setProperty('--semantic-hero-accent-rgb', toRgbChannels(resolvedTheme.semantic.heroAccent))
+  root.style.setProperty('--semantic-panel-bg-rgb', toRgbChannels(resolvedTheme.semantic.panelBg))
+  root.style.setProperty('--semantic-panel-border-rgb', toRgbChannels(resolvedTheme.semantic.panelBorder))
+  root.style.setProperty('--semantic-cta-primary-bg-rgb', toRgbChannels(resolvedTheme.semantic.ctaPrimaryBg))
 
   root.style.setProperty('--intensity-border-weight', resolvedTheme.intensity.borderWeight.toString())
   root.style.setProperty('--intensity-shadow-step', resolvedTheme.intensity.shadowStep.toString())
