@@ -29,7 +29,7 @@ const validate = (schema, property = 'body') => {
 // 用户验证规则
 const userSchemas = {
   login: Joi.object({
-    username: Joi.string().alphanum().min(3).max(30).required(),
+    username: Joi.string().pattern(/^[a-zA-Z0-9_@.-]+$/).min(3).max(50).required(),
     password: Joi.string().min(6).max(100).required()
   }),
 
@@ -415,7 +415,8 @@ const userManageSchemas = {
     role: Joi.string().valid('admin', 'editor', 'viewer').optional()
   }),
   createUser: Joi.object({
-    username: Joi.string().pattern(/^[a-zA-Z0-9_-]+$/).min(3).max(50).required(),
+    // 允许邮箱作为用户名（含 @ . - _）
+    username: Joi.string().pattern(/^[a-zA-Z0-9_@.-]+$/).min(3).max(50).required(),
     email: Joi.string().email().max(100).required(),
     password: Joi.string().min(6).max(100).required(),
     role: Joi.string().valid('admin', 'editor', 'viewer').default('editor'),

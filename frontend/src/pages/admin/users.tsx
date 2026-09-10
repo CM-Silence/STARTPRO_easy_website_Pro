@@ -382,7 +382,7 @@ export default function AdminUsersPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">用户名 *</label>
-              <input className={inputCls} value={createForm.username} onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })} placeholder="3-50 位字母/数字/下划线/中划线" />
+              <input className={inputCls} value={createForm.username} onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })} placeholder="用户名，3-100 位字母/数字/@ . - _）" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">邮箱 *</label>
