@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# 脚本必须在 Linux 上以 LF 运行（CRLF 会导致 bash 执行失败）
+*.sh text eol=lf
