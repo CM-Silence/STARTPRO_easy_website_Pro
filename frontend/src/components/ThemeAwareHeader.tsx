@@ -223,6 +223,9 @@ export default function ThemeAwareHeader({
     '--gradient-text': gradientTextValue,
     '--underline-glow': headerStyles.underlineGlowColor || `rgba(59, 130, 246, 0.4)`,
     '--accent-gradient-bar': headerStyles.accentGradientLeftBar || `linear-gradient(180deg, #3b82f6, #8b5cf6)`,
+    // 导航文字用普通 color 渲染，不用 background-clip: text（该属性在部分设备的 Chrome 上渲染失效会导致文字消失）
+    '--nav-link-color': headerStyles.textColor,
+    '--nav-link-hover-color': headerStyles.hoverColor,
   } as React.CSSProperties
 
   return (
@@ -273,18 +276,7 @@ export default function ThemeAwareHeader({
                   <>
                     <Link
                       href={localize(item.href)}
-                      className={`flex items-center px-4 py-2 rounded-md text-sm font-medium nav-link-gradient nav-link-underline ${isActiveLink(item.href) ? 'nav-active font-semibold' : ''}`}
-                      style={{
-                        backgroundImage: `linear-gradient(90deg, ${headerStyles.textColor}, ${headerStyles.textColor})`,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundImage = gradientTextValue
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActiveLink(item.href)) {
-                          e.currentTarget.style.backgroundImage = `linear-gradient(90deg, ${headerStyles.textColor}, ${headerStyles.textColor})`
-                        }
-                      }}
+                      className={`flex items-center px-4 py-2 rounded-md text-sm font-medium nav-link-color nav-link-underline ${isActiveLink(item.href) ? 'nav-active font-semibold' : ''}`}
                     >
                       <span className="relative z-20">{item.label}</span>
                     </Link>
@@ -329,18 +321,7 @@ export default function ThemeAwareHeader({
                 ) : (
                   <Link
                     href={localize(item.href)}
-                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium nav-link-gradient nav-link-underline ${isActiveLink(item.href) ? 'nav-active font-semibold' : ''}`}
-                    style={{
-                      backgroundImage: `linear-gradient(90deg, ${headerStyles.textColor}, ${headerStyles.textColor})`,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundImage = gradientTextValue
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActiveLink(item.href)) {
-                        e.currentTarget.style.backgroundImage = `linear-gradient(90deg, ${headerStyles.textColor}, ${headerStyles.textColor})`
-                      }
-                    }}
+                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium nav-link-color nav-link-underline ${isActiveLink(item.href) ? 'nav-active font-semibold' : ''}`}
                     {...(item.external && { target: '_blank', rel: 'noopener noreferrer' })}
                   >
                     <span className="relative z-20">{item.label}</span>

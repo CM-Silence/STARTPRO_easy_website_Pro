@@ -765,12 +765,6 @@ html {
   }
 }
 
-@keyframes gradientTextShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
 /* --- 毛玻璃导航栏 --- */
 
 .nav-glass {
@@ -816,17 +810,15 @@ html {
 
 /* --- 导航链接渐变文字 --- */
 
-.nav-link-gradient {
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-size: 200% 100%;
-  transition: background-position 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+/* 导航项文字：纯 color 渲染 + 悬停过渡到主题 hover 色。
+   不使用 background-clip: text —— 该属性在部分设备的 Chrome 上渲染失效会导致文字不可见 */
+.nav-link-color {
+  color: var(--nav-link-color, inherit);
+  transition: color 0.2s ease;
 }
 
-.nav-link-gradient:hover {
-  background-size: 300% 100%;
-  animation: gradientTextShift 3s ease infinite;
+.nav-link-color:hover {
+  color: var(--nav-link-hover-color, inherit);
 }
 
 /* --- 发光下划线 --- */
@@ -1024,19 +1016,15 @@ html {
   .kenburns { animation: none !important; }
 }
 
-/* --- 新闻卡「阅读更多」：默认黑字，悬停时才变为动态渐变；箭头独立悬浮 --- */
+/* --- 新闻卡「阅读更多」：纯色渲染，悬停变主题色；箭头独立悬浮 ---
+    注：不使用 background-clip: text，该属性在部分设备的 Chrome 上渲染失效会导致文字消失 */
 .news-card-readmore-text {
-  color: var(--color-text-primary, #1f2937); /* 默认黑色，无渐变底 */
+  color: var(--color-text-primary, #1f2937);
   transition: color 0.3s ease;
 }
 .group:hover .news-card-readmore-text,
 .news-card-readmore-text:hover {
-  background-image: var(--gradient-text, linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4));
-  background-size: 300% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradientTextShift 3s ease infinite;
+  color: var(--color-primary, #3b82f6);
 }
 .news-card-readmore-arrow {
   display: inline-block;
@@ -1045,11 +1033,6 @@ html {
 }
 .group:hover .news-card-readmore-arrow,
 .news-card-readmore-arrow:hover {
-  background-image: var(--gradient-text, linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4));
-  background-size: 300% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradientTextShift 3s ease infinite;
+  color: var(--color-primary, #3b82f6);
   transform: translateX(4px);
 }
