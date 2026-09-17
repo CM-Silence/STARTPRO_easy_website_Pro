@@ -9,6 +9,9 @@ on:
 jobs:
   frontend-build:
     runs-on: deploy
+    # Forgejo 经 Caddy 用本地自签 CA 提供 HTTPS，作业容器内 git 拉取需跳过证书校验
+    env:
+      GIT_SSL_NO_VERIFY: 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Build frontend
