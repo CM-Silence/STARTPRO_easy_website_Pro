@@ -54,7 +54,9 @@ jobs:
         run: |
           set -e
           SSH="ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
-          RSYNC="rsync -az --delete -e $SSH"
+          # ⚠ -e 的参数必须整体加引号：$SSH 含空格，不加引号会被 bash 拆词，
+          # 导致 rsync 的 -i/-o 被 rsync 自己的选项吃掉，ssh 退化成无密钥的密码认证
+          RSH="ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
 
           # 服务器端备份当前 .next 供快速回滚
           $SSH root@$DEPLOY_HOST '
@@ -66,7 +68,8 @@ jobs:
           '
 
           # --delete 清理旧文件；--exclude 同时保护服务器端同名路径不被删除
-          $RSYNC \
+          rsync -az --delete \
+            -e "$RSH" \
             --exclude .git/ \
             --exclude .forgejo/ \
             --exclude .env \
