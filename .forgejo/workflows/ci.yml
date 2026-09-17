@@ -1,0 +1,20 @@
+# 轻量 CI：master 分支推送 / PR 时验证前端可构建，防止坏代码流入
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  frontend-build:
+    runs-on: deploy
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          set -e
+          npm config set registry https://registry.npmmirror.com
+          npm ci
+          npm run build

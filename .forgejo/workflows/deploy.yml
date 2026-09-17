@@ -1,0 +1,99 @@
+# 部署流水线：推送 v* tag 到 Forgejo 触发自动部署
+# Runner：Docker 模式，部署在 NAS（绿联，与 Forgejo 同机）；label `deploy` 映射到自建镜像
+# pailink-ci:node20（node:20-bookworm + rsync，已在 NAS 上构建）
+# 流程：构建前端 -> rsync 同步源码与产物 -> 服务器端 npm ci --omit=dev -> pm2 reload -> 健康检查
+#
+# ⚠ rsync --delete 会清理部署目录中仓库未跟踪的文件，仅以下内容受 --exclude 保护（严禁移除）：
+#   .env（后端配置）、backend/uploads/（用户上传）、node_modules/、.git/、.forgejo/
+name: deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# 串行化：避免两个 tag 同时部署互相覆盖
+concurrency:
+  group: pailink-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: deploy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          set -e
+          npm config set registry https://registry.npmmirror.com
+          npm ci
+          npm run build
+
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$KNOWN_HOSTS" ]; then
+            printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          fi
+
+      - name: Upload release
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          set -e
+          SSH="ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
+          RSYNC="rsync -az --delete -e $SSH"
+
+          # 服务器端备份当前 .next 供快速回滚
+          $SSH root@$DEPLOY_HOST '
+            set -e
+            cd /www/wwwroot/pailink
+            rm -rf frontend/.next.bak
+            [ -d frontend/.next ] && cp -a frontend/.next frontend/.next.bak || true
+            mkdir -p frontend backend/src backend/public backend/system-default
+          '
+
+          # --delete 清理旧文件；--exclude 同时保护服务器端同名路径不被删除
+          $RSYNC \
+            --exclude .git/ \
+            --exclude .forgejo/ \
+            --exclude .env \
+            --exclude backend/uploads/ \
+            --exclude node_modules/ \
+            ./ root@$DEPLOY_HOST:/www/wwwroot/pailink/
+
+      - name: Install prod deps and reload services
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          set -e
+          SSH="ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
+          $SSH root@$DEPLOY_HOST '
+            set -e
+            cd /www/wwwroot/pailink/backend  && npm ci --omit=dev
+            cd /www/wwwroot/pailink/frontend && npm ci --omit=dev
+            pm2 reload pailink-backend
+            pm2 reload pailink-frontend
+          '
+
+      - name: Health check
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          set -e
+          SSH="ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
+          $SSH root@$DEPLOY_HOST '
+            set -e
+            sleep 3
+            curl -fsS http://127.0.0.1:3001/ > /dev/null && echo "frontend OK"
+            curl -fsS http://127.0.0.1:3003/api/health > /dev/null && echo "backend OK"
+          '

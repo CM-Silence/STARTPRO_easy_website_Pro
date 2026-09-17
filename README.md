@@ -43,10 +43,12 @@
 - **AI一键生成/同步**：以中文内容为基底，后台可以使用「AI 同步」将中文页面/文档/新闻/导航同步到目标语言；AI同步功能生成的是独立页面，可在后台进行二次修改。
 - **AI词条**：在「AI接入」页维护术语映射，翻译时强制保持术语一致（如“知识库 → Wiki”），多语言文案风格符合目标语言网页写作习惯。
 
-### CI/CD支持（可选）
-- **注意**：该功能仅针对本人目前遇到的工程场景，兼容性较差。推荐使用Github等仓库自带的CI/CD方案。
-- **服务器自动更新**：本地上传代码到云端时，只需打上标签，服务端就可自动检测、拉取云端代码并自动重启项目。
-- **了解更多**：请查看独立部署服务仓库 Pailink_Deploy（https://gitee.com/gdt-silence/pailink_-deployment.git）下的README。
+### CI/CD支持
+- **Tag 自动部署**：向 Forgejo 仓库推送 `v*` 标签即自动发布——Forgejo Actions 在 runner 上构建前端，
+  rsync 同步产物到生产服务器，安装生产依赖并 `pm2 reload` 前后端，最后健康检查（详见 `doc/06-部署与运维指南.md` 第 10 节）。
+- **构建检查**：master 分支推送 / PR 时自动运行前端构建检查（`.forgejo/workflows/ci.yml`）。
+- **历史方案**：早期使用 Gitee Webhook + 独立部署服务 Pailink_Deploy
+  （https://gitee.com/gdt-silence/pailink_-deployment.git），现已由 Forgejo Actions 替代，Gitee 仅作代码镜像。
 
 ### 浏览器缓存
 - **数据缓存**：优先使用浏览器缓存资源，并向服务器发起一次简单请求，判断缓存是否为最新数据，只有当缓存不是最新数据时，才向服务器请求最新数据并更新缓存和页面，有效解决因网络不佳导致的页面内容缺失问题。
@@ -144,3 +146,5 @@ cd frontend && npm run build && npm start
 原始版本由 STARTPRO 开发维护。企业官网： https://www.startpro.com.cn
 
 Pro版本由 CM-Silence 更改。项目效果：https://www.powerbelltech.com/pages/home
+
+ci测试

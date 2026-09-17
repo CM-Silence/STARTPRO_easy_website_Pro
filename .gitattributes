@@ -3,3 +3,7 @@
 
 # 脚本必须在 Linux 上以 LF 运行（CRLF 会导致 bash 执行失败）
 *.sh text eol=lf
+
+# Forgejo Actions 工作流必须 LF（CRLF 会破坏 run: 脚本块）
+*.yml text eol=lf
+*.yaml text eol=lf
