@@ -59,7 +59,7 @@ jobs:
           # 服务器端备份当前 .next 供快速回滚
           $SSH root@$DEPLOY_HOST '
             set -e
-            cd /www/wwwroot/pailink
+            cd /www/wwwroot/Pailink_OfficialWebsite
             rm -rf frontend/.next.bak
             [ -d frontend/.next ] && cp -a frontend/.next frontend/.next.bak || true
             mkdir -p frontend backend/src backend/public backend/system-default
@@ -72,7 +72,7 @@ jobs:
             --exclude .env \
             --exclude backend/uploads/ \
             --exclude node_modules/ \
-            ./ root@$DEPLOY_HOST:/www/wwwroot/pailink/
+            ./ root@$DEPLOY_HOST:/www/wwwroot/Pailink_OfficialWebsite/
 
       - name: Install prod deps and reload services
         env:
@@ -82,8 +82,8 @@ jobs:
           SSH="ssh -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
           $SSH root@$DEPLOY_HOST '
             set -e
-            cd /www/wwwroot/pailink/backend  && npm ci --omit=dev
-            cd /www/wwwroot/pailink/frontend && npm ci --omit=dev
+            cd /www/wwwroot/Pailink_OfficialWebsite/backend  && npm ci --omit=dev
+            cd /www/wwwroot/Pailink_OfficialWebsite/frontend && npm ci --omit=dev
             pm2 reload pailink-backend
             pm2 reload pailink-frontend
           '
