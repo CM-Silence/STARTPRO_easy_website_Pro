@@ -498,7 +498,7 @@ CREATE TABLE IF NOT EXISTS `docs` (
   `sort_order` int DEFAULT 0,
   `status` enum('draft','published') NOT NULL DEFAULT 'draft',
   `type` enum('doc','folder') NOT NULL DEFAULT 'doc',
-  `content_format` enum('html','markdown') NOT NULL DEFAULT 'markdown',
+  `content_format` enum('html','markdown','pdf') NOT NULL DEFAULT 'markdown',
   `content` longtext NOT NULL,
   `summary` text,
   `cover` varchar(255) DEFAULT NULL,

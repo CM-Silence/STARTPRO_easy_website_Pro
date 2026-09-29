@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Head from 'next/head'
+import dynamic from 'next/dynamic'
 import type { GetServerSideProps } from 'next'
 import type { Doc, DocNode } from '@/types'
 import DOMPurify from 'isomorphic-dompurify'
@@ -9,6 +10,9 @@ import { DocsSidebar } from '@/components/docs/DocsSidebar'
 import { DocContent } from '@/components/docs/DocContent'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/i18n/LocaleProvider'
+
+// pdf.js 仅浏览器端可用，服务端渲染时动态加载，避免 SSR 报错
+const PdfViewer = dynamic(() => import('@/components/docs/PdfViewer'), { ssr: false })
 
 interface DocsPageProps {
   doc: Doc
@@ -20,7 +24,11 @@ interface DocsPageProps {
     site_favicon?: string | null
     copyright?: string | null
     icp?: string | null
+    site_statement?: string | null
+    site_description?: string | null
+    company_name?: string | null
   }
+  initialTheme?: 'light' | 'dark' | null
 }
 
 const findFirstPublishedSlug = (nodes: DocNode[]): string | null => {
@@ -44,32 +52,49 @@ const filterPublishedTree = (nodes: DocNode[]): DocNode[] =>
     }))
 
 const Breadcrumbs = ({ items }: { items: { label: string; href?: string }[] }) => (
-  <nav className="text-sm text-[var(--color-text-secondary)] flex flex-wrap items-center gap-2">
+  <nav className="text-sm text-[var(--color-text-secondary)] flex flex-wrap items-center gap-x-1">
+    <span>/</span>
     {items.map((item, idx) => (
       <React.Fragment key={item.href || item.label + idx}>
         {idx > 0 && <span>/</span>}
-        <span className={item.href ? '' : 'text-[var(--color-text-primary)]'}>{item.label}</span>
+        <span className={item.href ? 'hover:underline' : 'text-[var(--color-text-primary)]'}>{item.label}</span>
       </React.Fragment>
     ))}
   </nav>
 )
 
-export default function DocsPage({ doc, tree, slugPath, settings }: DocsPageProps) {
+export default function DocsPage({ doc, tree, slugPath, settings, initialTheme }: DocsPageProps) {
   const { t } = useTranslation('common')
   const { localize } = useLocale()
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
+  // 主题初始值来自请求 Cookie（SSR 已按用户上次选择渲染），避免切换语言/导航时闪回默认暗色
+  const [theme, setTheme] = useState<'light' | 'dark'>(initialTheme || 'dark')
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light'
+      try {
+        document.cookie = `docs-theme=${next};path=/;max-age=31536000`
+        window.localStorage.setItem('docs-theme', next)
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
   const [headings, setHeadings] = useState<{ id: string; text: string; level: number }[]>([])
   const [activeHeadingId, setActiveHeadingId] = useState<string>('')
+  const isPdf = doc.content_format === 'pdf'
+  const pdfUrl = isPdf ? doc.content || '' : ''
   const rawHtml = useMemo(() => {
+    if (isPdf) return ''
     const content = doc.content || ''
     const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(content)
     const format = doc.content_format || (looksLikeHtml ? 'html' : 'markdown')
     if (format === 'markdown') return marked.parse(content)
     return content
-  }, [doc.content, doc.content_format])
+  }, [doc.content, doc.content_format, isPdf])
   const safeHtml = useMemo(() => DOMPurify.sanitize(rawHtml), [rawHtml])
   const siteName = settings.site_name || doc.title
-  const logoName = `${siteName || t('docs.home')} · ${t('docs.home')}`
+  const logoName = siteName || t('docs.home')
 
   // 避免被全局标题覆盖，强制文档页标题
   useEffect(() => {
@@ -134,7 +159,7 @@ export default function DocsPage({ doc, tree, slugPath, settings }: DocsPageProp
 
   const breadcrumbItems = useMemo(() => {
     const parts = slugPath.split('/').filter(Boolean)
-    const items: { label: string; href?: string }[] = [{ label: t('docs.home'), href: localize('/docs') }]
+    const items: { label: string; href?: string }[] = []
     let current = ''
     parts.forEach((part, idx) => {
       current = current ? `${current}/${part}` : part
@@ -183,9 +208,12 @@ export default function DocsPage({ doc, tree, slugPath, settings }: DocsPageProp
         </Head>
       <DocsLayout
         theme={theme}
-        onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+        onToggleTheme={toggleTheme}
         logo={{ url: settings.site_logo || undefined, name: logoName }}
-        footer={{ copyright: settings.copyright, icp: settings.icp }}
+        footer={{
+          copyright: settings.copyright,
+          statement: settings.site_statement
+        }}
         breadcrumbs={<Breadcrumbs items={breadcrumbItems} />}
         sidebar={<DocsSidebar nodes={sidebarTree} activeSlug={slugPath} expanded={expanded} onToggle={toggle} />}
         toc={<Toc />}
@@ -194,6 +222,9 @@ export default function DocsPage({ doc, tree, slugPath, settings }: DocsPageProp
           title={doc.title}
           summary={doc.summary}
           html={safeHtml}
+          pdfViewer={
+            isPdf ? <PdfViewer src={pdfUrl} fileName={doc.title ? `${doc.title}.pdf` : undefined} /> : undefined
+          }
           onHeadingsChange={setHeadings}
           onActiveHeadingChange={setActiveHeadingId}
         />
@@ -209,6 +240,17 @@ export const getServerSideProps: GetServerSideProps<DocsPageProps> = async (cont
   const slugPath = Array.isArray(slugParam) ? slugParam.join('/') : ''
   const locale = ((context.req.headers['x-locale'] as string) || 'zh').toString()
   const baseUrl = process.env.API_BASE_URL || 'http://localhost:3003'
+
+  // 读取用户上次选择的文档主题，SSR 直接按该主题渲染，避免导航时闪回默认暗色
+  const cookie = (context.req.headers.cookie || '').split(';').reduce<Record<string, string>>((acc, c) => {
+    const idx = c.indexOf('=')
+    if (idx === -1) return acc
+    const k = c.slice(0, idx).trim()
+    const v = c.slice(idx + 1).trim()
+    if (k === 'docs-theme' && (v === 'light' || v === 'dark')) acc[k] = v
+    return acc
+  }, {})
+  const cookieTheme = cookie['docs-theme'] ? (cookie['docs-theme'] as 'light' | 'dark') : null
 
   try {
     const [treeRes, settingsRes] = await Promise.all([
@@ -237,6 +279,10 @@ export const getServerSideProps: GetServerSideProps<DocsPageProps> = async (cont
     const settingsJson = settingsRes && settingsRes.ok ? await settingsRes.json() : { data: {} }
     const settings = settingsJson?.data || {}
 
+    // 主题：用户已在 Cookie 保存的选择优先；否则用后台配置的「前台默认主题」
+    const initialTheme =
+      cookieTheme || (settings.docs_default_theme === 'light' ? 'light' : 'dark')
+
     return {
       props: {
         doc: docData.data,
@@ -247,8 +293,12 @@ export const getServerSideProps: GetServerSideProps<DocsPageProps> = async (cont
           site_logo: settings.site_logo || settings.logo_url || settings.logoUrl || '',
           site_favicon: settings.site_favicon || settings.favicon_url || settings.faviconUrl || settings.icon_url || settings.favicon || '',
           copyright: settings.copyright || '',
-          icp: settings.icp || settings.icp_number || ''
-        }
+          icp: settings.icp || settings.icp_number || '',
+          site_statement: settings.site_statement || '',
+          site_description: settings.site_description || '',
+          company_name: settings.company_name || ''
+        },
+        initialTheme
       }
     }
   } catch (error) {

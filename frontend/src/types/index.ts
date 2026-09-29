@@ -384,7 +384,7 @@ export interface Doc {
   sort_order: number
   status: 'draft' | 'published'
   type?: 'doc' | 'folder'
-  content_format?: 'html' | 'markdown'
+  content_format?: 'html' | 'markdown' | 'pdf'
   content: string
   summary?: string | null
   cover?: string | null

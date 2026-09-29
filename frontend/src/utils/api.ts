@@ -221,6 +221,9 @@ export const settingsApi = {
   get: (lang?: string, withSync?: boolean) => api.get('/settings', { params: { lang, withSync: withSync ? '1' : undefined } }),
 
   update: (data: any) => api.put('/settings', data),
+
+  // 按单个 key 保存（走 /settings/:key，不受批量校验影响）
+  setByKey: (key: string, value: any, lang?: string) => api.put(`/settings/${key}`, { value, lang }),
 }
 
 export const languagesApi = {

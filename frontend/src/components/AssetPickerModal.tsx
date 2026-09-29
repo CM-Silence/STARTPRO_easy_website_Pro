@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
-import { X, Search, Folder, Image as ImageIcon, Loader2 } from 'lucide-react'
+import { X, Search, Folder, Image as ImageIcon, FileText, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { uploadApi } from '@/utils/api'
 
@@ -77,6 +77,14 @@ const isImageFile = (file: FileItem) => {
   const mime = file.mime_type || file.type || ''
   if (mime.toLowerCase().includes('image')) return true
   return /\.(png|jpe?g|gif|webp|svg|avif)$/i.test(file.name)
+}
+
+const getFileTypeLabel = (file: FileItem) => {
+  const ext = (file.name || '').split('.').pop()?.toUpperCase()
+  if (ext) return ext
+  const mime = file.mime_type || file.type || ''
+  const mimeExt = mime.split('/').pop()?.toUpperCase()
+  return mimeExt || '文件'
 }
 
 const isSystemSvgFile = (file: FileItem, source: SourceType) => {
@@ -634,9 +642,9 @@ const AssetPickerModal = ({
                             }}
                           />
                         ) : (
-                          <div className="flex flex-col items-center text-theme-textSecondary">
-                            <ImageIcon className="w-8 h-8 mb-2" />
-                            <span className="text-xs">{file.type || '文件'}</span>
+                          <div className="flex flex-col items-center justify-center text-theme-textSecondary">
+                            <FileText className="w-8 h-8 mb-2" />
+                            <span className="text-xs">{getFileTypeLabel(file)}</span>
                           </div>
                         )}
                       </div>

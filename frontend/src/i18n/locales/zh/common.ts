@@ -84,6 +84,18 @@ const zh = {
     toc: '本页目录',
     title: '文档',
     titleSuffix: '| 文档',
+    pdf: {
+      prev: '上一页',
+      next: '下一页',
+      pageInput: '页码',
+      zoomIn: '放大',
+      zoomOut: '缩小',
+      download: '下载 PDF',
+      loading: '正在加载 PDF…',
+      noFile: '未找到 PDF 文件',
+      loadFailed: 'PDF 加载失败',
+      renderFailed: 'PDF 渲染失败',
+    },
   },
   // 联系表单
   contact: {

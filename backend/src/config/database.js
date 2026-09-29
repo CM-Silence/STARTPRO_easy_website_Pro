@@ -10,7 +10,10 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  charset: 'utf8mb4'
+  charset: 'utf8mb4',
+  // 供迁移文件(backend/src/migrations/*.sql)用 db.query 执行多语句；
+  // 应用代码现有查询均为单语句 prepared（db.execute），不受影响
+  multipleStatements: true
 })
 
 module.exports = pool

@@ -242,12 +242,21 @@ app.use((err, req, res, next) => {
   })
 })
 
-// 启动服务器
-app.listen(PORT, () => {
-  console.log(`🚀 服务器启动成功！`)
-  console.log(`📱 API地址: http://localhost:${PORT}/api`)
-  console.log(`🔍 健康检查: http://localhost:${PORT}/api/health`)
-  console.log(`📋 环境: ${process.env.NODE_ENV || 'development'}`)
-})
+// 启动服务器：先执行数据库迁移，成功后再监听，避免带半更新 schema 对外服务
+const runMigrations = require('./migrations/runner')
+
+runMigrations(db)
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 服务器启动成功！`)
+      console.log(`📱 API地址: http://localhost:${PORT}/api`)
+      console.log(`🔍 健康检查: http://localhost:${PORT}/api/health`)
+      console.log(`📋 环境: ${process.env.NODE_ENV || 'development'}`)
+    })
+  })
+  .catch((error) => {
+    console.error('[MIGRATE] 数据库迁移失败，服务未启动:', error)
+    process.exit(1)
+  })
 
 module.exports = app

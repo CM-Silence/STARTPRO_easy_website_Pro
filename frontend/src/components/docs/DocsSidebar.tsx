@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { Search } from 'lucide-react'
 import type { DocNode } from '@/types'
 
 interface DocsSidebarProps {
@@ -119,13 +120,16 @@ export const DocsSidebar: React.FC<DocsSidebarProps> = ({ nodes, activeSlug, exp
           e.preventDefault()
         }}
       >
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="搜索文档"
-          className="doc-sidebar-search__input"
-        />
+        <div className="doc-sidebar-search__wrap">
+          <Search className="doc-sidebar-search__icon" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="搜索文档"
+            className="doc-sidebar-search__input"
+          />
+        </div>
       </form>
       {filteredNodes.length ? renderTree(filteredNodes) : (
         <div className="text-sm text-[var(--color-text-secondary)] px-2">暂无匹配结果</div>

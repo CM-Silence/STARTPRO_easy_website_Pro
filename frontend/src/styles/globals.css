@@ -979,7 +979,39 @@ html {
 
 .admin-shell .docs-ckeditor .ck.ck-toolbar.ck-toolbar_grouping > .ck-toolbar__items,
 .admin-shell .docs-ckeditor .ck.ck-toolbar > .ck-toolbar__items {
-  flex-wrap: wrap;
+  flex-wrap: wrap !important;
+}
+.admin-shell .docs-ckeditor .ck.ck-toolbar {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* 文档 HTML 编辑器：约束在容器宽度内，避免内容把编辑器撑出浏览器 */
+.admin-shell .docs-ckeditor .ck.ck-editor,
+.admin-shell .docs-ckeditor .ck-editor__main,
+.admin-shell .docs-ckeditor .ck-editor__editable {
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.admin-shell .docs-ckeditor .ck-editor__editable {
+  overflow-x: auto;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+.admin-shell .docs-ckeditor .ck-editor__editable_inline {
+  word-break: break-word;
+}
+.admin-shell .docs-ckeditor .ck-content img,
+.admin-shell .docs-ckeditor .ck-content table,
+.admin-shell .docs-ckeditor .ck-content pre,
+.admin-shell .docs-ckeditor .ck-content figure {
+  max-width: 100%;
+}
+.admin-shell .docs-ckeditor .ck-content pre {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 
 /* Visual editor should follow theme tokens instead of OS dark mode */

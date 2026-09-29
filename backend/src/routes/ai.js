@@ -618,18 +618,23 @@ async function syncOne({ type, srcId, lang, userId }) {
     const [exist] = await db.execute('SELECT id FROM docs WHERE lang = ? AND slug = ?', [lang, source.slug])
     let contentFormat = source.content_format || 'markdown'
     let status = source.status || 'draft'
+    // 同步父目录链，让目标语言下的文档挂到翻译后的目录下（而非根级）
+    const parentId = source.parent_id ? await mapDocParent(source.parent_id, lang, userId) : null
+    // PDF 型文档的 content 是文件地址，不能被 AI 翻译成文案
+    const isPdf = contentFormat === 'pdf'
+    const content = isPdf ? (source.content || '') : (translated.content || '')
     if (exist.length > 0) {
       targetId = exist[0].id
       await db.execute(
-        `UPDATE docs SET title=?, summary=?, content=?, updated_at=NOW() WHERE id=?`,
-        [translated.title, translated.summary || null, translated.content || '', targetId]
+        `UPDATE docs SET title=?, summary=?, content=?, parent_id=?, updated_at=NOW() WHERE id=?`,
+        [translated.title, translated.summary || null, content, parentId, targetId]
       )
     } else {
       const [r] = await db.execute(
         `INSERT INTO docs (title, slug, lang, parent_id, sort_order, status, type, content_format, content, summary, created_by, updated_by)
-         VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [translated.title, source.slug, lang, source.sort_order || 0, status, source.type || 'doc',
-         contentFormat, translated.content || '', translated.summary || null, userId, userId]
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [translated.title, source.slug, lang, parentId, source.sort_order || 0, status, source.type || 'doc',
+         contentFormat, content, translated.summary || null, userId, userId]
       )
       targetId = r.insertId
     }
@@ -672,6 +677,39 @@ async function mapNavParent(zhParentId, lang) {
     'SELECT id FROM navigation WHERE lang = ? AND source_id = ? LIMIT 1', [lang, zhParentId]
   )
   return rows.length ? rows[0].id : null
+}
+
+// 确保 docs 的父目录链在目标语言下已同步，返回父目录在目标语言下的 id（递归向上创建缺失的目录）
+async function mapDocParent(zhParentId, lang, userId) {
+  if (!zhParentId) return null
+  const [rows] = await db.execute(
+    'SELECT id, slug, parent_id, title, sort_order, status, type FROM docs WHERE id = ?', [zhParentId]
+  )
+  const parent = rows[0]
+  if (!parent || parent.type !== 'folder') return null
+
+  // 先创建更上层目录，保证层级完整
+  const grandParentId = parent.parent_id ? await mapDocParent(parent.parent_id, lang, userId) : null
+
+  const [exist] = await db.execute(
+    'SELECT id FROM docs WHERE lang = ? AND slug = ? AND type = ? LIMIT 1', [lang, parent.slug, 'folder']
+  )
+  if (exist.length > 0) return exist[0].id
+
+  let title = parent.title
+  try {
+    const tr = await translateItem({ type: 'doc', source: parent, targetLang: lang })
+    if (tr && tr.title) title = tr.title
+  } catch (e) {
+    console.warn(`[AI] 翻译父目录 "${parent.title}" 标题失败：${e.message}`)
+  }
+
+  const [r] = await db.execute(
+    `INSERT INTO docs (title, slug, lang, parent_id, sort_order, status, type, content_format, content, summary, created_by, updated_by)
+     VALUES (?, ?, ?, ?, ?, ?, 'folder', 'markdown', '', NULL, ?, ?)`,
+    [title, parent.slug, lang, grandParentId, parent.sort_order || 0, parent.status || 'published', userId, userId]
+  )
+  return r.insertId
 }
 
 // 系统设置 AI 一键转换：把中文的本地化设置键翻译并写为所选语言版本（共享键保持 zh）

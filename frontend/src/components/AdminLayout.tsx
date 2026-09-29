@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
   LayoutDashboard,
+  ClipboardList,
   FileText,
   Settings,
   Sparkles,
@@ -55,7 +56,7 @@ const menuItems: MenuItem[] = [
   {
     label: '页面管理',
     href: '/admin/pages',
-    icon: <FileText className="w-5 h-5" />
+    icon: <ClipboardList className="w-5 h-5" />
   },
   {
     label: '文档中心',

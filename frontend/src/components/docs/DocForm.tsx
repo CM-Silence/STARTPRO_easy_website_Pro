@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import type { Doc, DocNode } from '@/types'
+import { FileText } from 'lucide-react'
 import DocParentSelector from './DocParentSelector'
 import AssetPickerModal, { type SelectedAsset } from '@/components/AssetPickerModal'
 import { marked } from 'marked'
@@ -81,8 +82,20 @@ export default function DocForm({
   const convertedHtmlSnapshotRef = useRef<string | null>(null)
   const [isAssetPickerOpen, setIsAssetPickerOpen] = useState(false)
   const [assetSource, setAssetSource] = useState<'user' | 'system'>('user')
-  const contentFormat = (form.content_format || 'html') as 'html' | 'markdown'
+  const contentFormat = (form.content_format || 'html') as 'html' | 'markdown' | 'pdf'
   const isHtmlMode = contentFormat === 'html'
+  const isPdfMode = contentFormat === 'pdf'
+
+  const pdfFileName = useMemo(() => {
+    const url = String(form.content || '').trim()
+    if (!url) return ''
+    const base = url.split('/').pop() || url
+    try {
+      return decodeURIComponent(base)
+    } catch {
+      return base
+    }
+  }, [form.content])
 
   useEffect(() => {
     setForm((prev) => {
@@ -262,6 +275,27 @@ export default function DocForm({
     return map
   }, [parentTree])
 
+  // 父级目录路径作为只读前缀（如 "test/"），用户只编辑文档自身 slug 路径
+  const parentPrefix = useMemo(() => {
+    if (!form.parent_id) return ''
+    const p = parentSlugMap.get(form.parent_id)
+    return p ? `${p}/` : ''
+  }, [form.parent_id, parentSlugMap])
+
+  const slugTail = useMemo(() => {
+    const s = form.slug || ''
+    if (!parentPrefix) return s
+    const parentPath = parentPrefix.replace(/\/$/, '')
+    if (s === parentPath) return ''
+    if (s.startsWith(`${parentPath}/`)) return s.slice(parentPath.length + 1)
+    return s
+  }, [form.slug, parentPrefix])
+
+  const handleSlugTailChange = (val: string) => {
+    const cleaned = val.replace(/^\/+/, '')
+    handleChange('slug', parentPrefix ? `${parentPrefix}${cleaned}` : cleaned)
+  }
+
   const handleChange = (key: keyof Doc, value: any) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
@@ -291,6 +325,11 @@ export default function DocForm({
     if (!finalSlug) {
       setEditorError(null)
       alert('Slug 不能为空')
+      return
+    }
+    if (isPdfMode && !String(form.content || '').trim()) {
+      setEditorError(null)
+      alert('请从素材库选择 PDF 文件')
       return
     }
 
@@ -331,8 +370,19 @@ export default function DocForm({
     })
   }
 
-  const handleContentFormatChange = (next: 'html' | 'markdown') => {
+  const insertPdf = (url: string) => {
+    const normalized = normalizeAssetUrl(url)
+    handleChange('content', normalized)
+  }
+
+  const handleContentFormatChange = (next: 'html' | 'markdown' | 'pdf') => {
     if (next === contentFormat) return
+
+    if (next === 'pdf') {
+      // 切到 PDF 无需内容转换，后续由“从素材库选择 PDF”写入 content
+      setForm((prev) => ({ ...prev, content_format: 'pdf' }))
+      return
+    }
 
     if (next === 'html') {
       const markdown = String(form.content || '')
@@ -367,7 +417,11 @@ export default function DocForm({
   }
 
   const handleAssetSelect = (asset: SelectedAsset) => {
-    insertImage(asset.url || '')
+    if (isPdfMode) {
+      insertPdf(asset.url || '')
+    } else {
+      insertImage(asset.url || '')
+    }
     setIsAssetPickerOpen(false)
   }
 
@@ -378,7 +432,7 @@ export default function DocForm({
           <div className="space-y-2">
             <label className="text-sm font-medium text-theme-text">标题</label>
             <input
-              className="w-full theme-input rounded-lg"
+              className="w-full theme-input rounded-lg px-3"
               style={{ borderRadius: 10 }}
               value={form.title || ''}
               onChange={(e) => handleChange('title', e.target.value)}
@@ -388,14 +442,25 @@ export default function DocForm({
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-theme-text">Slug（路径）</label>
-            <input
-              className="w-full theme-input rounded-lg"
+            <div
+              className="flex items-center w-full theme-input rounded-lg overflow-hidden"
               style={{ borderRadius: 10 }}
-              value={form.slug || ''}
-              onChange={(e) => handleChange('slug', e.target.value)}
-              placeholder="例如：guide/getting-started"
-            />
-            <p className="text-xs text-theme-textSecondary">支持多级路径，使用 / 分隔，会自动转为小写</p>
+            >
+              {parentPrefix && (
+                <span className="flex-shrink-0 px-2 py-2 text-theme-textSecondary bg-theme-surfaceAlt border-r border-theme-divider whitespace-nowrap select-none">
+                  {parentPrefix}
+                </span>
+              )}
+              <input
+                className="flex-1 min-w-0 bg-transparent px-3 py-2 text-theme-text outline-none placeholder:text-theme-textSecondary/60"
+                value={slugTail}
+                onChange={(e) => handleSlugTailChange(e.target.value)}
+                placeholder="文档路径"
+              />
+            </div>
+            <p className="text-xs text-theme-textSecondary">
+              {parentPrefix ? '父级目录已固定为只读前缀，此处填写文档自身的 slug 路径' : '支持多级路径，使用 / 分隔，会自动转为小写'}
+            </p>
           </div>
           <div className="space-y-2">
             <DocParentSelector
@@ -404,11 +469,11 @@ export default function DocForm({
               excludeId={excludeId}
               onChange={(id) => {
                 handleChange('parent_id', id)
-                // 自动补齐 slug 前缀
+                // 自动补齐 slug 前缀；保留用户已编辑的文档自身 slug（slugTail）
                 if (id) {
                   const pSlug = parentSlugMap.get(id)
                   if (pSlug) {
-                    const base = form.slug ? form.slug.replace(/^.*\//, '') : slugify(form.title || '')
+                    const base = slugTail || slugify(form.title || '')
                     handleChange('slug', base ? `${pSlug}/${base}` : pSlug)
                   }
                 }
@@ -419,7 +484,7 @@ export default function DocForm({
             <label className="text-sm font-medium text-theme-text">排序</label>
             <input
               type="number"
-              className="w-full theme-input rounded-lg"
+              className="w-full theme-input rounded-lg px-3"
               style={{ borderRadius: 10 }}
               value={form.sort_order ?? 0}
               onChange={(e) => handleChange('sort_order', Number(e.target.value))}
@@ -442,10 +507,11 @@ export default function DocForm({
               <select
                 className="theme-input text-xs py-1 px-2 rounded-md"
                 value={contentFormat}
-                onChange={(e) => handleContentFormatChange(e.target.value as 'html' | 'markdown')}
+                onChange={(e) => handleContentFormatChange(e.target.value as 'html' | 'markdown' | 'pdf')}
               >
                 <option value="html">HTML</option>
                 <option value="markdown">Markdown</option>
+                <option value="pdf">PDF</option>
               </select>
             </div>
             <span
@@ -457,7 +523,7 @@ export default function DocForm({
             >
               {form.status === 'published' ? '已发布' : '草稿'}
             </span>
-            {!editorError && (
+            {!editorError && !isPdfMode && (
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -471,9 +537,41 @@ export default function DocForm({
           </div>
         </div>
 
-        {editorError || !isHtmlMode ? (
+        {isPdfMode ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => openAssetPicker('user')}
+                className="px-3 py-1.5 text-xs rounded-md bg-theme-surfaceAlt border border-theme-divider text-theme-text hover:bg-theme-surface"
+              >
+                从素材库选择 PDF
+              </button>
+              {form.content && (
+                <button
+                  type="button"
+                  onClick={() => handleChange('content', '')}
+                  className="px-3 py-1.5 text-xs rounded-md bg-theme-surfaceAlt border border-theme-divider text-theme-textSecondary hover:bg-theme-surface"
+                >
+                  移除 PDF
+                </button>
+              )}
+            </div>
+            {form.content ? (
+              <div className="flex items-center gap-3 rounded-lg bg-theme-surfaceAlt border border-theme-divider p-3">
+                <FileText className="w-5 h-5 text-[var(--semantic-cta-primary-bg)] shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-theme-text truncate">{pdfFileName || 'PDF 文件'}</p>
+                  <p className="text-xs text-theme-textSecondary truncate">{form.content}</p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-theme-textSecondary">尚未选择 PDF 文件</p>
+            )}
+          </div>
+        ) : editorError || !isHtmlMode ? (
           <textarea
-            className="w-full theme-input min-h-[260px]"
+            className="w-full theme-input min-h-[260px] px-3 py-2"
             value={form.content || ''}
             onChange={(e) => handleChange('content', e.target.value)}
             placeholder="编辑器加载失败，直接输入纯文本"
@@ -493,7 +591,7 @@ export default function DocForm({
             `}</style>
             <div
               ref={editorHostRef}
-              className="docs-ckeditor min-h-[360px] bg-theme-surfaceAlt rounded-md p-2 min-w-0"
+              className="docs-ckeditor w-full max-w-full min-w-0 min-h-[360px] bg-theme-surfaceAlt rounded-md p-2"
             />
           </>
         )}

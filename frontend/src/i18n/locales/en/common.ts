@@ -84,6 +84,18 @@ const en = {
     toc: 'On this page',
     title: 'Document',
     titleSuffix: '| Documentation',
+    pdf: {
+      prev: 'Previous page',
+      next: 'Next page',
+      pageInput: 'Page number',
+      zoomIn: 'Zoom in',
+      zoomOut: 'Zoom out',
+      download: 'Download PDF',
+      loading: 'Loading PDF…',
+      noFile: 'PDF file not found',
+      loadFailed: 'Failed to load PDF',
+      renderFailed: 'Failed to render PDF',
+    },
   },
   // Contact form
   contact: {

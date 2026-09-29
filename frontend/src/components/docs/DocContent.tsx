@@ -4,6 +4,8 @@ interface DocContentProps {
   title: string
   summary?: string | null
   html: string
+  /** PDF 型文档时传入内联阅读器节点（连同 action 提示放在正文位置） */
+  pdfViewer?: React.ReactNode
   onHeadingsChange?: (headings: { id: string; text: string; level: number }[]) => void
   onActiveHeadingChange?: (id: string) => void
 }
@@ -15,8 +17,16 @@ const slugify = (text: string) =>
     .replace(/[^\w\u4e00-\u9fa5\- ]+/g, '')
     .replace(/\s+/g, '-')
 
-export const DocContent: React.FC<DocContentProps> = ({ title, summary, html, onHeadingsChange, onActiveHeadingChange }) => {
+export const DocContent: React.FC<DocContentProps> = ({
+  title,
+  summary,
+  html,
+  pdfViewer,
+  onHeadingsChange,
+  onActiveHeadingChange
+}) => {
   const containerRef = useRef<HTMLDivElement>(null)
+  const isPdf = Boolean(pdfViewer)
 
   const copyText = async (text: string) => {
     try {
@@ -43,6 +53,7 @@ export const DocContent: React.FC<DocContentProps> = ({ title, summary, html, on
   }
 
   useEffect(() => {
+    if (isPdf) return
     const root = containerRef.current
     if (!root) return
     // 为所有 <pre> 添加复制按钮
@@ -63,9 +74,10 @@ export const DocContent: React.FC<DocContentProps> = ({ title, summary, html, on
       })
       pre.appendChild(btn)
     })
-  }, [html])
+  }, [html, isPdf])
 
   useEffect(() => {
+    if (isPdf) return
     const root = containerRef.current
     if (!root) return
 
@@ -100,7 +112,7 @@ export const DocContent: React.FC<DocContentProps> = ({ title, summary, html, on
 
     headingEls.forEach((el) => observer.observe(el))
     return () => observer.disconnect()
-  }, [html, onHeadingsChange, onActiveHeadingChange])
+  }, [html, isPdf, onHeadingsChange, onActiveHeadingChange])
 
   return (
     <div className="doc-main__inner">
@@ -111,7 +123,11 @@ export const DocContent: React.FC<DocContentProps> = ({ title, summary, html, on
         </h1>
         {summary && <p className="doc-summary">{summary}</p>}
       </header>
-      <div ref={containerRef} className="doc-html" dangerouslySetInnerHTML={{ __html: html }} />
+      {isPdf ? (
+        <div className="doc-html">{pdfViewer}</div>
+      ) : (
+        <div ref={containerRef} className="doc-html" dangerouslySetInnerHTML={{ __html: html }} />
+      )}
     </div>
   )
 }

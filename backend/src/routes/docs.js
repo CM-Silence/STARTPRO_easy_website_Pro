@@ -391,9 +391,21 @@ router.delete(
       const [existing] = await db.execute('SELECT id FROM docs WHERE id = ?', [id])
       if (!existing.length) return res.status(404).json({ success: false, message: '文档不存在' })
 
-      await db.execute('DELETE FROM docs WHERE id = ?', [id])
+      // 若删除的是文件夹，级联删除其全部后代（文档/子目录），避免产生孤儿
+      const idsToDelete = [Number(id)]
+      const queue = [Number(id)]
+      while (queue.length) {
+        const parentId = queue.shift()
+        const [children] = await db.execute('SELECT id FROM docs WHERE parent_id = ?', [parentId])
+        for (const c of children) {
+          idsToDelete.push(c.id)
+          queue.push(c.id)
+        }
+      }
+      const placeholders = idsToDelete.map(() => '?').join(',')
+      await db.execute(`DELETE FROM docs WHERE id IN (${placeholders})`, idsToDelete)
 
-      res.json({ success: true, message: '文档删除成功' })
+      res.json({ success: true, message: `删除成功（含 ${idsToDelete.length - 1} 个子项）` })
     } catch (error) {
       console.error('删除文档失败:', error)
       res.status(500).json({ success: false, message: '删除文档失败' })

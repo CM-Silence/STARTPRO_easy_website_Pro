@@ -76,7 +76,7 @@ export default function DocParentSelector({
       <select
         value={value ?? ''}
         onChange={handleChange}
-        className="w-full theme-input rounded-lg"
+        className="w-full theme-input rounded-lg px-3"
         style={{ borderRadius: 10 }}
       >
         <option value="">无（一级）</option>
