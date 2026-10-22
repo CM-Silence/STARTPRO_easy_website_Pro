@@ -192,6 +192,7 @@ const settingsSchemas = {
     page_transition: Joi.string().valid('fade', 'slide', 'none').optional(),
     transition_main_title: Joi.string().max(200).optional().allow('', null),
     transition_subtitle: Joi.string().max(200).optional().allow('', null),
+    docs_default_theme: Joi.string().valid('light', 'dark').optional(),
     smooth_scroll: Joi.string().valid('on', 'off').optional(),
     smooth_scroll_duration: Joi.string().optional().allow(''),
     custom_theme: Joi.object({

@@ -106,13 +106,50 @@ const sanitizeFooterSocialLinksPayload = (links?: FooterSocialLink[] | null): Fo
     }))
 }
 
+// 本页只编辑并保存这些键。其余设置（docs_default_theme、social_links、copyright 等）
+// 由各自的后台页面维护，不随本页整表回传，避免页面之间互相覆盖或触发校验冲突。
+const OWNED_SETTING_KEYS: (keyof Settings)[] = [
+  'site_name',
+  'company_name',
+  'site_description',
+  'site_keywords',
+  'site_logo',
+  'site_favicon',
+  'site_font',
+  'site_font_custom_name',
+  'site_font_url',
+  'site_theme',
+  'theme_background',
+  'page_transition',
+  'transition_main_title',
+  'transition_subtitle',
+  'smooth_scroll',
+  'smooth_scroll_duration',
+  'allow_search_index',
+  'verification_tags',
+  'site_statement',
+  'icp_number',
+  'icp_link',
+  'contact_email',
+  'contact_phone',
+  'address',
+  'footer_layout',
+  'footer_social_title',
+  'footer_social_links'
+]
+
 const sanitizeSettingsPayload = (data: Settings): Settings => {
-  const payload = { ...data } as any
-  payload.footer_layout = normalizeFooterLayoutPayload(data.footer_layout)
-  payload.footer_social_links = sanitizeFooterSocialLinksPayload(data.footer_social_links)
-  payload.site_statement = (data.site_statement || '').trim()
-  payload.icp_link = (data.icp_link || '').trim()
-  payload.allow_search_index = data.allow_search_index !== false
+  const source = data as Settings & Record<string, any>
+  const payload: Record<string, any> = {}
+  OWNED_SETTING_KEYS.forEach((key) => {
+    if (source[key] !== undefined) payload[key] = source[key]
+  })
+
+  payload.footer_layout = normalizeFooterLayoutPayload(source.footer_layout)
+  payload.footer_social_links = sanitizeFooterSocialLinksPayload(source.footer_social_links)
+  payload.site_statement = (source.site_statement || '').trim()
+  payload.icp_link = (source.icp_link || '').trim()
+  payload.allow_search_index = source.allow_search_index !== false
   // 清理验证标签中的空值，并提取 content 代码片段
   const extractCode = (value: string) => {
     const trimmed = (value || '').trim()
@@ -130,9 +167,6 @@ const sanitizeSettingsPayload = (data: Settings): Settings => {
     })
     payload.verification_tags = cleaned
   }
-  delete payload.nav_layout_style
-  delete payload.site_record
-  delete payload.theme_overrides
   return payload as Settings
 }
 
@@ -413,7 +447,8 @@ export default function AdminSettingsPage() {
       const response = await settingsApi.update({ ...payload, lang })
       if (response.success) {
         toast.success('设置保存成功')
-        setSettings(payload)
+        // 本地状态保留未由本页维护的键（如 custom_theme），避免保存后预览状态被清空
+        setSettings(data)
         reset(payload)
         await refreshSettings()
       } else {

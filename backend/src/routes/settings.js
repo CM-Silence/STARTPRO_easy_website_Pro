@@ -317,12 +317,22 @@ router.put('/',
   validateUpdateSettings,
   logActivity('update', 'settings'),
   async (req, res) => {
+    let connection
     try {
       const settingsData = req.body
+      if (!settingsData || typeof settingsData !== 'object' || Array.isArray(settingsData)) {
+        return res.status(400).json({
+          success: false,
+          message: '请求数据格式错误'
+        })
+      }
+
       const editLang = resolveLang(req.body.lang || req.query.lang)
+      const rows = []
 
       for (const [key, value] of Object.entries(settingsData)) {
         if (key === 'lang') continue
+
         let normalizedValue = value
 
         if (key === 'footer_layout') {
@@ -353,15 +363,33 @@ router.put('/',
         // 本地化键写当前语言行；共享键（主题/ICP/联系方式/…）写 zh 行
         const targetLang = LOCALIZED_SETTINGS.includes(key) ? editLang : 'zh'
 
-        await db.execute(`
-          INSERT INTO settings (setting_key, setting_value, setting_type, lang, updated_at)
-          VALUES (?, ?, ?, ?, NOW())
-          ON DUPLICATE KEY UPDATE
-          setting_value = VALUES(setting_value),
-          setting_type = VALUES(setting_type),
-          lang = VALUES(lang),
-          updated_at = NOW()
-        `, [key, settingValue, settingType, targetLang])
+        rows.push([key, settingValue, settingType, targetLang])
+      }
+
+      // 同一批设置写入放在一个事务里，避免中途失败留下半套配置
+      if (rows.length) {
+        connection = await db.getConnection()
+        try {
+          await connection.beginTransaction()
+          for (const row of rows) {
+            await connection.execute(`
+              INSERT INTO settings (setting_key, setting_value, setting_type, lang, updated_at)
+              VALUES (?, ?, ?, ?, NOW())
+              ON DUPLICATE KEY UPDATE
+              setting_value = VALUES(setting_value),
+              setting_type = VALUES(setting_type),
+              lang = VALUES(lang),
+              updated_at = NOW()
+            `, row)
+          }
+          await connection.commit()
+        } catch (error) {
+          await connection.rollback().catch(() => {})
+          throw error
+        } finally {
+          connection.release()
+          connection = null
+        }
       }
 
       res.json({
