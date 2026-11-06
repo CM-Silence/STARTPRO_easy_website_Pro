@@ -507,7 +507,7 @@ const ComponentEditor = ({
               </div>
 
               {component.type === 'logo-scroll' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 gap-4 mb-4">
                   <div>
                     <label htmlFor="logo-scroll-height" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Logo 高度</label>
                     <div className="flex items-center gap-3">
@@ -516,19 +516,15 @@ const ComponentEditor = ({
                         type="range"
                         min={LOGO_SCROLL_MIN_HEIGHT}
                         max={LOGO_SCROLL_MAX_HEIGHT}
-                        step={1}
+                        step={10}
                         value={logoScrollHeight}
                         aria-valuetext={`${logoScrollHeight}px`}
                         onChange={(e) => handleFieldChange('height', Number(e.target.value))}
-                        className="flex-1 min-w-0 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                        className="flex-1 min-w-0 h-6 accent-tech-accent cursor-pointer"
                       />
-                      <output htmlFor="logo-scroll-height" className="w-14 text-right text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                      <output htmlFor="logo-scroll-height" className="w-14 shrink-0 text-right text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                         {logoScrollHeight}px
                       </output>
-                    </div>
-                    <div className="flex justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      <span>{LOGO_SCROLL_MIN_HEIGHT}px</span>
-                      <span>{LOGO_SCROLL_MAX_HEIGHT}px</span>
                     </div>
                   </div>
                   <div>
