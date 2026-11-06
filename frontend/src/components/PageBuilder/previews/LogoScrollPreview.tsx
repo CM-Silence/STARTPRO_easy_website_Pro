@@ -1,21 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { TemplateComponent } from '@/types/templates'
+import { resolveLogoScrollHeight } from '@/lib/logoScroll'
 
 export const LogoScrollPreview: React.FC<{ component: TemplateComponent }> = ({ component }) => {
   const {
     title = '合作伙伴',
     subtitle = '值得信赖的合作伙伴网络',
     logos = [],
-    height,
     widthOption = 'full',
     backgroundColorOption = 'default',
     scrollSpeed
   } = component.props || {}
 
-  const heightSetting = (height || component.props?.logoHeight || component.props?.heightOption || 'low') as
-    | 'low'
-    | 'high'
-    | 'medium'
   const speedSetting = (scrollSpeed || component.props?.logoScrollSpeed || 'slow') as 'slow' | 'fast'
 
   const containerClass = `${widthOption === 'standard' ? 'max-w-screen-2xl mx-auto' : 'w-full'} ${
@@ -29,7 +25,7 @@ export const LogoScrollPreview: React.FC<{ component: TemplateComponent }> = ({ 
   const viewportRef = useRef<HTMLDivElement>(null)
   const sequenceRef = useRef<HTMLDivElement>(null)
   const [layout, setLayout] = useState({ copies: 1, distance: 0 })
-  const logoHeight = heightSetting === 'high' ? 160 : 80
+  const logoHeight = resolveLogoScrollHeight(component.props)
 
   useEffect(() => {
     const viewport = viewportRef.current
@@ -70,7 +66,7 @@ export const LogoScrollPreview: React.FC<{ component: TemplateComponent }> = ({ 
             className="logo-track"
             style={{
               '--logo-height': `${logoHeight}px`,
-              '--logo-width': `${logoHeight === 160 ? 288 : 192}px`,
+              '--logo-width': `${Math.max(192, logoHeight * 1.8)}px`,
               animationDuration: `${duration || 1}s`,
               animationPlayState: layout.distance ? 'running' : 'paused'
             } as React.CSSProperties}

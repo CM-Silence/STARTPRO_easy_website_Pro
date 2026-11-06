@@ -224,7 +224,7 @@ export const imageComponents: ComponentDefinition[] = [
         title: '合作伙伴',
         subtitle: '值得信赖的合作伙伴网络',
         logos: [],
-        height: 'low',
+        height: 80,
         scrollSpeed: 'slow',
         widthOption: 'full',
         backgroundColorOption: 'default'
@@ -232,10 +232,7 @@ export const imageComponents: ComponentDefinition[] = [
       editableFields: [
         { key: 'title', label: '标题', type: 'text', value: '' },
         { key: 'subtitle', label: '副标题', type: 'text', value: '' },
-        { key: 'height', label: 'Logo高度', type: 'text', value: 'low', options: [
-          { label: '高（160px）', value: 'high' }, 
-          { label: '低（80px）', value: 'low' }
-        ] },
+        { key: 'height', label: 'Logo高度（px）', type: 'text', value: 80, placeholder: '40–400px' },
         { key: 'scrollSpeed', label: '滚动速度', type: 'text', value: 'slow', options: [
           { label: '慢速', value: 'slow' },
           { label: '快速', value: 'fast' }

@@ -20,6 +20,7 @@ import { CyberEffectsEditor } from './editors/common/CyberEffectsEditor'
 import { MotionEffectsEditor } from './editors/common/MotionEffectsEditor'
 import AiAssistModal from './AiAssistModal'
 import { aiApi } from '@/utils/api'
+import { LOGO_SCROLL_MIN_HEIGHT, LOGO_SCROLL_MAX_HEIGHT, resolveLogoScrollHeight } from '@/lib/logoScroll'
 
 interface ComponentEditorProps {
   component: TemplateComponent
@@ -69,6 +70,7 @@ const ComponentEditor = ({
 }: ComponentEditorProps) => {
   const componentDefinition = componentDefinitions.find(def => def.type === component.type);
   const [formData, setFormData] = useState<any>(component.props)
+  const logoScrollHeight = resolveLogoScrollHeight(formData)
   const supportsIconColorControls = ICON_COLOR_COMPONENTS.has(component.type)
   const [isAiModalOpen, setIsAiModalOpen] = useState(false)
   const [isAiGenerating, setIsAiGenerating] = useState(false)
@@ -507,15 +509,27 @@ const ComponentEditor = ({
               {component.type === 'logo-scroll' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Logo 高度</label>
-                    <select
-                      value={formData.height || 'low'}
-                      onChange={(e) => handleFieldChange('height', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg  theme-input focus:ring-2 focus:ring-tech-accent focus:border-transparent"
-                    >
-                      <option value="low">低（80px）</option>
-                      <option value="high">高（160px）</option>
-                    </select>
+                    <label htmlFor="logo-scroll-height" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Logo 高度</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        id="logo-scroll-height"
+                        type="range"
+                        min={LOGO_SCROLL_MIN_HEIGHT}
+                        max={LOGO_SCROLL_MAX_HEIGHT}
+                        step={1}
+                        value={logoScrollHeight}
+                        aria-valuetext={`${logoScrollHeight}px`}
+                        onChange={(e) => handleFieldChange('height', Number(e.target.value))}
+                        className="flex-1 min-w-0 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                      />
+                      <output htmlFor="logo-scroll-height" className="w-14 text-right text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                        {logoScrollHeight}px
+                      </output>
+                    </div>
+                    <div className="flex justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      <span>{LOGO_SCROLL_MIN_HEIGHT}px</span>
+                      <span>{LOGO_SCROLL_MAX_HEIGHT}px</span>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">滚动速度</label>
